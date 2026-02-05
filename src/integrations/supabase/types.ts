@@ -14,7 +14,377 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      buy_ins: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          is_bonus: boolean
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          player_id: string
+          session_id: string | null
+          table_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          is_bonus?: boolean
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          player_id: string
+          session_id?: string | null
+          table_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          is_bonus?: boolean
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          player_id?: string
+          session_id?: string | null
+          table_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buy_ins_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "buy_ins_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "buy_ins_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_outs: {
+        Row: {
+          chip_value: number
+          created_at: string
+          id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          player_id: string
+          profit: number
+          session_id: string | null
+          table_id: string
+          total_buy_in: number
+        }
+        Insert: {
+          chip_value: number
+          created_at?: string
+          id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          player_id: string
+          profit: number
+          session_id?: string | null
+          table_id: string
+          total_buy_in: number
+        }
+        Update: {
+          chip_value?: number
+          created_at?: string
+          id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          player_id?: string
+          profit?: number
+          session_id?: string | null
+          table_id?: string
+          total_buy_in?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_outs_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_outs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_outs_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_sessions: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          final_chip_inventory: Json | null
+          id: string
+          initial_chip_inventory: Json | null
+          is_open: boolean
+          notes: string | null
+          session_date: string
+          updated_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          final_chip_inventory?: Json | null
+          id?: string
+          initial_chip_inventory?: Json | null
+          is_open?: boolean
+          notes?: string | null
+          session_date: string
+          updated_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          final_chip_inventory?: Json | null
+          id?: string
+          initial_chip_inventory?: Json | null
+          is_open?: boolean
+          notes?: string | null
+          session_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chip_types: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          sort_order: number
+          value: number
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          sort_order?: number
+          value: number
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          sort_order?: number
+          value?: number
+        }
+        Relationships: []
+      }
+      club_settings: {
+        Row: {
+          club_name: string
+          created_at: string
+          credit_limit_per_player: number
+          id: string
+          logo_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          club_name?: string
+          created_at?: string
+          credit_limit_per_player?: number
+          id?: string
+          logo_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          club_name?: string
+          created_at?: string
+          credit_limit_per_player?: number
+          id?: string
+          logo_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      credit_records: {
+        Row: {
+          amount: number
+          buy_in_id: string | null
+          created_at: string
+          id: string
+          is_paid: boolean
+          notes: string | null
+          paid_at: string | null
+          player_id: string
+        }
+        Insert: {
+          amount: number
+          buy_in_id?: string | null
+          created_at?: string
+          id?: string
+          is_paid?: boolean
+          notes?: string | null
+          paid_at?: string | null
+          player_id: string
+        }
+        Update: {
+          amount?: number
+          buy_in_id?: string | null
+          created_at?: string
+          id?: string
+          is_paid?: boolean
+          notes?: string | null
+          paid_at?: string | null
+          player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_records_buy_in_id_fkey"
+            columns: ["buy_in_id"]
+            isOneToOne: false
+            referencedRelation: "buy_ins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_records_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dealer_tips: {
+        Row: {
+          amount: number
+          created_at: string
+          dealer_id: string
+          id: string
+          notes: string | null
+          session_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          dealer_id: string
+          id?: string
+          notes?: string | null
+          session_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          dealer_id?: string
+          id?: string
+          notes?: string | null
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dealer_tips_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dealer_tips_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dealers: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          total_tips: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          total_tips?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          total_tips?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      players: {
+        Row: {
+          created_at: string
+          credit_balance: number
+          credit_limit: number
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credit_balance?: number
+          credit_limit?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credit_balance?: number
+          credit_limit?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tables: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +393,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      payment_method:
+        | "pix"
+        | "cash"
+        | "debit"
+        | "credit"
+        | "credit_fiado"
+        | "bonus"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +526,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      payment_method: [
+        "pix",
+        "cash",
+        "debit",
+        "credit",
+        "credit_fiado",
+        "bonus",
+      ],
+    },
   },
 } as const
