@@ -143,6 +143,7 @@ export function useCashSession(date?: string) {
     chipTypes,
     isLoading,
     closeSession: closeSession.mutate,
+    closeSessionAsync: closeSession.mutateAsync,
     reopenSession: reopenSession.mutate,
     updateInitialInventory: updateInitialInventory.mutate,
     isClosing: closeSession.isPending,
