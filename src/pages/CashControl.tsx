@@ -72,24 +72,29 @@ export default function CashControl() {
             </PopoverContent>
           </Popover>
 
-          {session && !session.is_open ? (
-            <Button 
-              variant="outline" 
-              onClick={() => reopenSession()}
-              className="bg-input border-border"
-            >
-              <LockOpen className="mr-2 h-4 w-4" />
-              Reabrir Caixa
-            </Button>
-          ) : isToday ? (
-            <Button 
-              onClick={() => setShowCloseModal(true)}
-              className="bg-gold text-gold-foreground hover:bg-gold/90"
-            >
-              <Lock className="mr-2 h-4 w-4" />
-              Fechar Caixa
-            </Button>
-          ) : null}
+          {/* Session controls */}
+          {isToday && (
+            <>
+              {session?.is_open === false ? (
+                <Button 
+                  variant="outline" 
+                  onClick={() => reopenSession()}
+                  className="bg-input border-border"
+                >
+                  <LockOpen className="mr-2 h-4 w-4" />
+                  Reabrir Caixa
+                </Button>
+              ) : (
+                <Button 
+                  onClick={() => setShowCloseModal(true)}
+                  className="bg-gold text-gold-foreground hover:bg-gold/90"
+                >
+                  <Lock className="mr-2 h-4 w-4" />
+                  Fechar Caixa
+                </Button>
+              )}
+            </>
+          )}
         </div>
 
         {/* Session Status */}

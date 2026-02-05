@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useTables } from '@/hooks/useTables';
 import { Header } from '@/components/poker/Header';
 import { BottomNav } from '@/components/poker/BottomNav';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,8 +9,9 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ArrowDownLeft, ArrowUpRight, Clock, Filter, CalendarIcon, Trash2, Gift, Users } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Clock, Filter, CalendarIcon, Trash2, Gift, Users, LayoutGrid } from 'lucide-react';
 import { formatCurrency, formatTime, getPaymentMethodLabel } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { Transaction } from '@/types/poker';
@@ -23,14 +25,30 @@ export default function History() {
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   
   const { transactions, deleteBuyIn, deleteCashOut } = useTransactions(dateStr);
+  const { tables } = useTables();
   const [filter, setFilter] = useState<FilterType>('all');
+  const [tableFilter, setTableFilter] = useState<string>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; type: string } | null>(null);
+
+  // Get unique tables from transactions
+  const transactionTables = useMemo(() => {
+    const tableIds = new Set<string>();
+    transactions.forEach(t => {
+      if (t.table_id) tableIds.add(t.table_id);
+    });
+    return tables.filter(t => tableIds.has(t.id));
+  }, [transactions, tables]);
 
   // Group transactions by hour
   const groupedTransactions = useMemo(() => {
-    const filtered = filter === 'all' 
+    let filtered = filter === 'all' 
       ? transactions 
       : transactions.filter((t) => t.type === filter);
+
+    // Apply table filter
+    if (tableFilter !== 'all') {
+      filtered = filtered.filter((t) => t.table_id === tableFilter);
+    }
 
     const groups = new Map<string, Transaction[]>();
     
@@ -56,7 +74,7 @@ export default function History() {
         return sum;
       }, 0),
     }));
-  }, [transactions, filter]);
+  }, [transactions, filter, tableFilter]);
 
   const handleDelete = (id: string, type: string) => {
     if (type === 'buy-in') {
@@ -72,8 +90,8 @@ export default function History() {
       <Header />
 
       <main className="container py-6">
-        {/* Date Picker */}
-        <div className="flex items-center gap-3 mb-6">
+        {/* Date Picker and Table Filter */}
+        <div className="flex flex-wrap items-center gap-3 mb-6">
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className="bg-input border-border">
@@ -91,6 +109,22 @@ export default function History() {
               />
             </PopoverContent>
           </Popover>
+
+          {/* Table Filter */}
+          <Select value={tableFilter} onValueChange={setTableFilter}>
+            <SelectTrigger className="w-[160px] bg-input border-border">
+              <LayoutGrid className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Todas as mesas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as mesas</SelectItem>
+              {transactionTables.map((table) => (
+                <SelectItem key={table.id} value={table.id}>
+                  {table.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Filter buttons */}
@@ -139,7 +173,7 @@ export default function History() {
         </div>
 
         {/* Transaction list */}
-        <ScrollArea className="h-[calc(100vh-280px)]">
+        <ScrollArea className="h-[calc(100vh-320px)]">
           <div className="space-y-6">
             {groupedTransactions.length === 0 ? (
               <div className="text-center py-12">
