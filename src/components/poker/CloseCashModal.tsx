@@ -33,7 +33,7 @@ interface CloseCashModalProps {
 
 export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
   const { dailySummary, dealerTips } = useTransactions(date);
-  const { session, chipTypes, closeSession, isClosing } = useCashSession(date);
+  const { session, chipTypes, closeSessionAsync, isClosing } = useCashSession(date);
   const { dealers } = useDealers();
   const { totalUnpaid: totalCredits } = useCreditRecords();
   const { settings } = useClubSettings();
@@ -55,12 +55,16 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
     return sum + (count * chip.value);
   }, 0);
 
-  const handleClose = () => {
-    closeSession({
-      finalInventory: chipInventory,
-      notes: notes || undefined,
-    });
-    onClose();
+  const handleClose = async () => {
+    try {
+      await closeSessionAsync({
+        finalInventory: chipInventory,
+        notes: notes || undefined,
+      });
+      onClose();
+    } catch (error) {
+      console.error('Error closing session:', error);
+    }
   };
 
   const generatePDF = () => {
