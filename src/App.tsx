@@ -8,6 +8,8 @@ import CashControl from "./pages/CashControl";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
 import Dealers from "./pages/Dealers";
+import Rake from "./pages/Rake";
+import Receivables from "./pages/Receivables";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +25,8 @@ const App = () => (
           <Route path="/caixa" element={<CashControl />} />
           <Route path="/historico" element={<History />} />
           <Route path="/dealers" element={<Dealers />} />
+          <Route path="/rake" element={<Rake />} />
+          <Route path="/receber" element={<Receivables />} />
           <Route path="/configuracoes" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

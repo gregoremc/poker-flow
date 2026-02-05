@@ -262,6 +262,48 @@ export type Database = {
           },
         ]
       }
+      dealer_payouts: {
+        Row: {
+          amount: number
+          created_at: string
+          dealer_id: string
+          id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          session_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          dealer_id: string
+          id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          session_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          dealer_id?: string
+          id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dealer_payouts_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dealer_payouts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dealer_tips: {
         Row: {
           amount: number
@@ -331,6 +373,58 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_receipts: {
+        Row: {
+          amount: number
+          created_at: string
+          credit_record_id: string
+          id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          player_id: string
+          session_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          credit_record_id: string
+          id?: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          player_id: string
+          session_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          credit_record_id?: string
+          id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          player_id?: string
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_receipts_credit_record_id_fkey"
+            columns: ["credit_record_id"]
+            isOneToOne: false
+            referencedRelation: "credit_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_receipts_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_receipts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       players: {
         Row: {
           created_at: string
@@ -360,6 +454,48 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      rake_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          session_id: string | null
+          table_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          session_id?: string | null
+          table_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          session_id?: string | null
+          table_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rake_entries_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rake_entries_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "tables"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tables: {
         Row: {

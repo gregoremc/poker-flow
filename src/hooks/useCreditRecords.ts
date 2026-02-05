@@ -1,12 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { CreditRecord } from '@/types/poker';
+import { CreditRecord, PaymentMethod } from '@/types/poker';
 import { toast } from 'sonner';
 
 export function useCreditRecords() {
   const queryClient = useQueryClient();
 
-  // Get all unpaid credit records
+  // Get all credit records (both paid and unpaid for history)
   const { data: credits = [], isLoading } = useQuery({
     queryKey: ['credit-records'],
     queryFn: async () => {
@@ -16,7 +16,6 @@ export function useCreditRecords() {
           *,
           player:players(*)
         `)
-        .eq('is_paid', false)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -60,14 +59,74 @@ export function useCreditRecords() {
     },
   });
 
+  // Receive payment - marks credit as paid and creates a payment receipt
+  const receivePaymentMutation = useMutation({
+    mutationFn: async ({ 
+      creditId, 
+      paymentMethod, 
+      sessionId 
+    }: { 
+      creditId: string; 
+      paymentMethod: PaymentMethod;
+      sessionId?: string;
+    }) => {
+      // Get the credit record first
+      const { data: credit, error: creditError } = await supabase
+        .from('credit_records')
+        .select('*')
+        .eq('id', creditId)
+        .single();
+
+      if (creditError) throw creditError;
+
+      // Create payment receipt
+      const { error: receiptError } = await supabase
+        .from('payment_receipts')
+        .insert([{
+          credit_record_id: creditId,
+          player_id: credit.player_id,
+          amount: credit.amount,
+          payment_method: paymentMethod,
+          session_id: sessionId,
+        }]);
+
+      if (receiptError) throw receiptError;
+
+      // Mark credit as paid
+      const { data, error } = await supabase
+        .from('credit_records')
+        .update({ is_paid: true, paid_at: new Date().toISOString() })
+        .eq('id', creditId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as CreditRecord;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['credit-records'] });
+      queryClient.invalidateQueries({ queryKey: ['players'] });
+      queryClient.invalidateQueries({ queryKey: ['payment-receipts'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
+      toast.success('Pagamento recebido!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao receber pagamento');
+      console.error(error);
+    },
+  });
+
   // Total unpaid credits
-  const totalUnpaid = credits.reduce((sum, c) => sum + Number(c.amount), 0);
+  const unpaidCredits = credits.filter(c => !c.is_paid);
+  const totalUnpaid = unpaidCredits.reduce((sum, c) => sum + Number(c.amount), 0);
 
   return {
     credits,
     isLoading,
     getPlayerCredits,
     markAsPaid: markAsPaid.mutate,
+    receivePayment: receivePaymentMutation.mutateAsync,
+    isReceiving: receivePaymentMutation.isPending,
     totalUnpaid,
   };
 }
