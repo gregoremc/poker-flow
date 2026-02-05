@@ -4,6 +4,8 @@ import { useCashSession } from '@/hooks/useCashSession';
 import { useDealers } from '@/hooks/useDealers';
 import { useCreditRecords } from '@/hooks/useCreditRecords';
 import { useClubSettings } from '@/hooks/useClubSettings';
+import { useRake } from '@/hooks/useRake';
+import { useDealerPayouts } from '@/hooks/useDealerPayouts';
 import { ChipInventory } from '@/types/poker';
 import {
   Dialog,
@@ -16,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileText, Download, Lock, Loader2, ArrowDownLeft, ArrowUpRight, Users, Gift, AlertCircle } from 'lucide-react';
+import { FileText, Download, Lock, Loader2, ArrowDownLeft, ArrowUpRight, Users, Gift, AlertCircle, Percent, Wallet } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -35,10 +37,11 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
   const { dealers } = useDealers();
   const { totalUnpaid: totalCredits } = useCreditRecords();
   const { settings } = useClubSettings();
+  const { totalRake, rakeByTable } = useRake(date);
+  const { totalPayouts } = useDealerPayouts(date);
   
   const [chipInventory, setChipInventory] = useState<ChipInventory>({});
   const [notes, setNotes] = useState('');
-  const [showPreview, setShowPreview] = useState(false);
 
   const handleChipChange = (chipId: string, value: number) => {
     setChipInventory(prev => ({
@@ -85,7 +88,7 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
     
-    const addLine = (label: string, value: string, color?: string) => {
+    const addLine = (label: string, value: string) => {
       doc.text(label, 14, y);
       doc.text(value, pageWidth - 14, y, { align: 'right' });
       y += 7;
@@ -112,6 +115,26 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
     doc.setFont('helvetica', 'normal');
     y += 10;
 
+    // Rake Section
+    if (totalRake > 0) {
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Rake (Comissão da Casa)', 14, y);
+      y += 10;
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+
+      rakeByTable.forEach((tableRake) => {
+        addLine(tableRake.tableName + ':', formatCurrency(tableRake.total));
+      });
+      
+      doc.setFont('helvetica', 'bold');
+      addLine('Total Rake:', formatCurrency(totalRake));
+      doc.setFont('helvetica', 'normal');
+      y += 10;
+    }
+
     // Dealer Tips
     if (dailySummary.totalDealerTips > 0) {
       doc.setFontSize(14);
@@ -135,7 +158,14 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
       doc.setFont('helvetica', 'bold');
       addLine('Total Caixinhas:', formatCurrency(dailySummary.totalDealerTips));
       doc.setFont('helvetica', 'normal');
-      y += 10;
+      y += 5;
+
+      if (totalPayouts > 0) {
+        doc.setTextColor(220, 53, 69); // red
+        addLine('Saída (Pagamento Dealers):', `-${formatCurrency(totalPayouts)}`);
+        doc.setTextColor(0); // reset
+      }
+      y += 5;
     }
 
     // Chip Inventory
@@ -160,6 +190,17 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
       doc.setFont('helvetica', 'normal');
       y += 10;
     }
+
+    // Final Balance
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Saldo Final', 14, y);
+    y += 10;
+    
+    doc.setFontSize(11);
+    const finalBalance = dailySummary.realBalance + totalRake - totalPayouts;
+    addLine('Saldo Operacional + Rake - Saídas Dealer:', formatCurrency(finalBalance));
+    y += 5;
 
     // Notes
     if (notes) {
@@ -225,6 +266,20 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
                     {formatCurrency(dailySummary.balance)}
                   </span>
                 </div>
+
+                {/* Rake */}
+                {totalRake > 0 && (
+                  <div className="border-t border-border pt-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Percent className="h-4 w-4 text-gold" />
+                      <span className="text-sm font-medium">Rake Total</span>
+                    </div>
+                    <span className="money-value text-gold font-bold">
+                      {formatCurrency(totalRake)}
+                    </span>
+                  </div>
+                )}
+
                 {(dailySummary.totalBonuses > 0 || totalCredits > 0) && (
                   <div className="border-t border-border pt-3 space-y-2">
                     {dailySummary.totalBonuses > 0 && (
@@ -257,12 +312,23 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
                   </div>
                 )}
                 {dailySummary.totalDealerTips > 0 && (
-                  <div className="border-t border-border pt-3 flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-3 w-3 text-gold" />
-                      <span className="text-muted-foreground">Caixinhas</span>
+                  <div className="border-t border-border pt-3 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-3 w-3 text-gold" />
+                        <span className="text-muted-foreground">Caixinhas</span>
+                      </div>
+                      <span className="text-gold">{formatCurrency(dailySummary.totalDealerTips)}</span>
                     </div>
-                    <span className="text-gold">{formatCurrency(dailySummary.totalDealerTips)}</span>
+                    {totalPayouts > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <Wallet className="h-3 w-3 text-destructive" />
+                          <span className="text-muted-foreground">Saída (Dealers)</span>
+                        </div>
+                        <span className="text-destructive">-{formatCurrency(totalPayouts)}</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

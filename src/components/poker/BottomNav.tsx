@@ -1,11 +1,12 @@
 import { useLocation, Link } from 'react-router-dom';
-import { LayoutGrid, Wallet, Clock, Users } from 'lucide-react';
+import { LayoutGrid, Wallet, Clock, Users, Percent, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Mesas', icon: LayoutGrid },
   { path: '/caixa', label: 'Caixa', icon: Wallet },
-  { path: '/historico', label: 'Histórico', icon: Clock },
+  { path: '/rake', label: 'Rake', icon: Percent },
+  { path: '/receber', label: 'A Receber', icon: AlertCircle },
   { path: '/dealers', label: 'Dealers', icon: Users },
 ];
 
@@ -30,8 +31,8 @@ export function BottomNav() {
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <Icon className="h-6 w-6" />
-              <span className="text-xs mt-1 font-medium">{item.label}</span>
+              <Icon className="h-5 w-5" />
+              <span className="text-[10px] mt-1 font-medium">{item.label}</span>
             </Link>
           );
         })}
