@@ -55,16 +55,14 @@ export function TableCard({ table, onBuyIn, onCashOut }: TableCardProps) {
               >
                 <Power className={`h-4 w-4 ${table.is_active ? 'text-primary' : 'text-muted-foreground'}`} />
               </Button>
-              {!table.is_active && playerCount === 0 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setDeleteConfirm(true)}
-                  className="h-8 w-8 text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setDeleteConfirm(true)}
+                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -125,13 +123,26 @@ export function TableCard({ table, onBuyIn, onCashOut }: TableCardProps) {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation */}
+      {/* Delete Confirmation with CASCADE warning */}
       <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
         <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Mesa</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir a mesa "{table.name}"? Esta ação não pode ser desfeita.
+            <AlertDialogTitle className="text-destructive flex items-center gap-2">
+              <Trash2 className="h-5 w-5" />
+              Excluir Mesa Permanentemente
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p className="font-semibold text-foreground">
+                Atenção! Excluir a mesa "{table.name}" apagará permanentemente:
+              </p>
+              <ul className="list-disc list-inside text-sm space-y-1">
+                <li>Todos os registros de buy-in vinculados</li>
+                <li>Todos os registros de cash-out vinculados</li>
+                <li>Todo o histórico de rake desta mesa</li>
+              </ul>
+              <p className="text-destructive font-medium mt-2">
+                Esta ação não pode ser desfeita. Deseja continuar?
+              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -140,7 +151,7 @@ export function TableCard({ table, onBuyIn, onCashOut }: TableCardProps) {
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Excluir
+              Sim, Excluir Permanentemente
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
