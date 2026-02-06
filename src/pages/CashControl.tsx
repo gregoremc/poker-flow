@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, TrendingDown, CalendarIcon, FileText, Gift, AlertCircle, Users, Lock, LockOpen } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, TrendingDown, CalendarIcon, FileText, Gift, AlertCircle, Users, Lock, LockOpen, Play } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -21,7 +21,16 @@ export default function CashControl() {
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   
   const { dailySummary, buyIns, isLoading } = useTransactions(dateStr);
-  const { session, reopenSession, isClosing } = useCashSession(dateStr);
+  const { 
+    session, 
+    sessionExists, 
+    isSessionOpen, 
+    isSessionClosed,
+    openSession, 
+    reopenSession, 
+    isOpening,
+    isClosing 
+  } = useCashSession(dateStr);
   const { dealers } = useDealers();
   const { totalUnpaid: totalCredits } = useCreditRecords();
   const [showCloseModal, setShowCloseModal] = useState(false);
@@ -46,6 +55,11 @@ export default function CashControl() {
   };
 
   const isToday = format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+
+  // Handle opening a new session
+  const handleOpenSession = () => {
+    openSession({});
+  };
 
   return (
     <div className="min-h-screen pb-20">
@@ -72,9 +86,20 @@ export default function CashControl() {
             </PopoverContent>
           </Popover>
 
-          {/* Session controls - available for any date */}
+          {/* Session controls - 3 states: no session, open, closed */}
           <div className="flex items-center gap-2">
-            {session?.is_open === false ? (
+            {!sessionExists ? (
+              // No session exists - show "Abrir Caixa"
+              <Button 
+                onClick={handleOpenSession}
+                disabled={isOpening}
+                className="bg-success text-success-foreground hover:bg-success/90"
+              >
+                <Play className="mr-2 h-4 w-4" />
+                {isOpening ? 'Abrindo...' : 'Abrir Caixa'}
+              </Button>
+            ) : isSessionClosed ? (
+              // Session exists but is closed - show "Reabrir Caixa"
               <Button 
                 variant="outline" 
                 onClick={() => reopenSession()}
@@ -84,16 +109,46 @@ export default function CashControl() {
                 Reabrir Caixa
               </Button>
             ) : (
+              // Session exists and is open - show "Fechar Caixa"
               <Button 
                 onClick={() => setShowCloseModal(true)}
+                disabled={isClosing}
                 className="bg-gold text-gold-foreground hover:bg-gold/90"
               >
                 <Lock className="mr-2 h-4 w-4" />
-                Fechar Caixa
+                {isClosing ? 'Fechando...' : 'Fechar Caixa'}
               </Button>
             )}
           </div>
         </div>
+
+        {/* Session Status Messages */}
+        {!sessionExists && (
+          <div className="p-3 rounded-lg bg-muted border border-border flex items-center gap-2">
+            <Play className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              Nenhum caixa aberto para {format(selectedDate, "dd/MM/yyyy")}. Clique em "Abrir Caixa" para iniciar.
+            </span>
+          </div>
+        )}
+
+        {isSessionClosed && (
+          <div className="p-3 rounded-lg bg-muted border border-border flex items-center gap-2">
+            <Lock className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              Caixa fechado em {session?.closed_at ? format(new Date(session.closed_at), "dd/MM 'às' HH:mm") : 'data desconhecida'}
+            </span>
+          </div>
+        )}
+
+        {isSessionOpen && (
+          <div className="p-3 rounded-lg bg-success/10 border border-success/20 flex items-center gap-2">
+            <Play className="h-4 w-4 text-success" />
+            <span className="text-sm text-success">
+              Caixa aberto e operando
+            </span>
+          </div>
+        )}
 
         {/* Session Status */}
         {session && !session.is_open && (
