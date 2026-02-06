@@ -60,8 +60,6 @@ export default function CashControl() {
   };
 
   const handleOpenCloseModal = () => {
-    // Feedback imediato para confirmar que o clique foi registrado
-    toast.message('Abrindo fechamento do caixa...');
     setShowCloseModal(true);
   };
 
@@ -153,7 +151,7 @@ export default function CashControl() {
 
         {/* Main Balance Card */}
         <Card className="card-glow border-primary/20 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
           <CardContent className="pt-6 relative">
             <div className="text-center">
               <p className="text-sm text-muted-foreground uppercase tracking-wider mb-2">
