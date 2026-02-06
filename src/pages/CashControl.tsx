@@ -9,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, TrendingDown, CalendarIcon, FileText, Gift, AlertCircle, Users, Lock, LockOpen, Play } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/lib/format';
+import { ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, TrendingDown, CalendarIcon, Gift, AlertCircle, Users, Lock, LockOpen, Play } from 'lucide-react';
+import { formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CloseCashModal } from '@/components/poker/CloseCashModal';
+import { toast } from 'sonner';
 
 export default function CashControl() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -31,7 +32,6 @@ export default function CashControl() {
     isOpening,
     isClosing 
   } = useCashSession(dateStr);
-  const { dealers } = useDealers();
   const { totalUnpaid: totalCredits } = useCreditRecords();
   const [showCloseModal, setShowCloseModal] = useState(false);
 
@@ -54,11 +54,15 @@ export default function CashControl() {
     bonus: 'Bônus',
   };
 
-  const isToday = format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-
   // Handle opening a new session
   const handleOpenSession = () => {
     openSession({});
+  };
+
+  const handleOpenCloseModal = () => {
+    // Feedback imediato para confirmar que o clique foi registrado
+    toast.message('Abrindo fechamento do caixa...');
+    setShowCloseModal(true);
   };
 
   return (
@@ -89,7 +93,6 @@ export default function CashControl() {
           {/* Session controls - 3 states: no session, open, closed */}
           <div className="flex items-center gap-2">
             {!sessionExists ? (
-              // No session exists - show "Abrir Caixa"
               <Button 
                 onClick={handleOpenSession}
                 disabled={isOpening}
@@ -99,7 +102,6 @@ export default function CashControl() {
                 {isOpening ? 'Abrindo...' : 'Abrir Caixa'}
               </Button>
             ) : isSessionClosed ? (
-              // Session exists but is closed - show "Reabrir Caixa"
               <Button 
                 variant="outline" 
                 onClick={() => reopenSession()}
@@ -109,9 +111,8 @@ export default function CashControl() {
                 Reabrir Caixa
               </Button>
             ) : (
-              // Session exists and is open - show "Fechar Caixa"
               <Button 
-                onClick={() => setShowCloseModal(true)}
+                onClick={handleOpenCloseModal}
                 disabled={isClosing}
                 className="bg-gold text-gold-foreground hover:bg-gold/90"
               >
@@ -149,6 +150,181 @@ export default function CashControl() {
             </span>
           </div>
         )}
+
+        {/* Main Balance Card */}
+        <Card className="card-glow border-primary/20 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
+          <CardContent className="pt-6 relative">
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground uppercase tracking-wider mb-2">
+                Saldo do Dia
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <Wallet className="h-8 w-8 text-primary" />
+                <span 
+                  className={cn(
+                    'money-value text-5xl',
+                    dailySummary.balance >= 0 ? 'text-gold' : 'text-destructive'
+                  )}
+                >
+                  {formatCurrency(dailySummary.balance)}
+                </span>
+              </div>
+              <div className="flex items-center justify-center gap-1 mt-2">
+                {dailySummary.balance >= 0 ? (
+                  <TrendingUp className="h-4 w-4 text-success" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-destructive" />
+                )}
+                <span className="text-sm text-muted-foreground">
+                  {dailySummary.balance >= 0 ? 'Lucro' : 'Prejuízo'} operacional
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Real Balance (excluding bonuses and fiado) */}
+        {(dailySummary.totalBonuses > 0 || dailySummary.totalCredits > 0) && (
+          <Card className="card-glow border-orange-500/20">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Wallet className="h-5 w-5 text-orange-500" />
+                  <span className="text-sm font-medium">Saldo Real (Caixa Físico)</span>
+                </div>
+                <span className={cn(
+                  'money-value text-xl',
+                  dailySummary.realBalance >= 0 ? 'text-success' : 'text-destructive'
+                )}>
+                  {formatCurrency(dailySummary.realBalance)}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Exclui bônus ({formatCurrency(dailySummary.totalBonuses)}) e fiado ({formatCurrency(dailySummary.totalCredits)})
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* In/Out Summary */}
+        <div className="grid grid-cols-2 gap-4">
+          <Card className="card-glow">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 rounded-lg bg-success/10">
+                  <ArrowDownLeft className="h-5 w-5 text-success" />
+                </div>
+                <span className="text-sm text-muted-foreground">Entradas</span>
+              </div>
+              <p className="money-value text-2xl text-success">
+                {formatCurrency(dailySummary.totalBuyIns)}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-glow">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 rounded-lg bg-destructive/10">
+                  <ArrowUpRight className="h-5 w-5 text-destructive" />
+                </div>
+                <span className="text-sm text-muted-foreground">Saídas</span>
+              </div>
+              <p className="money-value text-2xl text-destructive">
+                {formatCurrency(dailySummary.totalCashOuts)}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Special entries */}
+        <div className="grid grid-cols-2 gap-4">
+          {dailySummary.totalBonuses > 0 && (
+            <Card className="card-glow border-purple-500/20">
+              <CardContent className="py-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Gift className="h-4 w-4 text-purple-500" />
+                  <span className="text-sm text-muted-foreground">Bônus</span>
+                </div>
+                <p className="money-value text-xl text-purple-500">
+                  {formatCurrency(dailySummary.totalBonuses)}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {totalCredits > 0 && (
+            <Card className="card-glow border-orange-500/20">
+              <CardContent className="py-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="h-4 w-4 text-orange-500" />
+                  <span className="text-sm text-muted-foreground">Contas a Receber</span>
+                </div>
+                <p className="money-value text-xl text-orange-500">
+                  {formatCurrency(totalCredits)}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {dailySummary.totalDealerTips > 0 && (
+            <Card className="card-glow border-gold/20">
+              <CardContent className="py-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="h-4 w-4 text-gold" />
+                  <span className="text-sm text-muted-foreground">Caixinhas Dealers</span>
+                </div>
+                <p className="money-value text-xl text-gold">
+                  {formatCurrency(dailySummary.totalDealerTips)}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Payment Method Breakdown */}
+        <Card className="card-glow">
+          <CardHeader>
+            <CardTitle className="text-lg">Entradas por Forma de Pagamento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {Object.keys(paymentBreakdown).length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">
+                Nenhuma entrada registrada
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(paymentBreakdown).map(([method, amount]) => (
+                  <div key={method} className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      {paymentLabels[method] || method}
+                    </span>
+                    <span className="money-value text-lg">
+                      {formatCurrency(amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+
+      <BottomNav />
+
+      {/* Monta o modal somente quando necessário (evita abrir/fechar instantâneo) */}
+      {showCloseModal && (
+        <CloseCashModal 
+          open={true}
+          onClose={() => setShowCloseModal(false)}
+          date={dateStr}
+        />
+      )}
+    </div>
+  );
+}
+
 
         {/* Session Status */}
         {session && !session.is_open && (
