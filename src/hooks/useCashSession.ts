@@ -17,7 +17,7 @@ export function useCashSession(date?: string) {
     queryClient.invalidateQueries({ queryKey: ['active-sessions'] });
   };
 
-  // Get or create session for today
+  // Get session for the date (DO NOT auto-create)
   const { data: session, isLoading } = useQuery({
     queryKey: ['cash-session', targetDate],
     queryFn: async () => {
@@ -29,19 +29,8 @@ export function useCashSession(date?: string) {
 
       if (error) throw error;
       
-      // If no session exists for today, create one
-      if (!data) {
-        const { data: newSession, error: createError } = await supabase
-          .from('cash_sessions')
-          .insert([{ session_date: targetDate }])
-          .select()
-          .single();
-        
-        if (createError) throw createError;
-        return newSession as CashSession;
-      }
-      
-      return data as CashSession;
+      // Return null if no session exists - user must explicitly open one
+      return data as CashSession | null;
     },
   });
 
@@ -56,6 +45,32 @@ export function useCashSession(date?: string) {
 
       if (error) throw error;
       return data as ChipType[];
+    },
+  });
+
+  // Open a new session for the date
+  const openSession = useMutation({
+    mutationFn: async (initialInventory?: ChipInventory) => {
+      const { data, error } = await supabase
+        .from('cash_sessions')
+        .insert([{ 
+          session_date: targetDate,
+          initial_chip_inventory: initialInventory || {},
+          is_open: true
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as CashSession;
+    },
+    onSuccess: () => {
+      invalidateAllQueries();
+      toast.success('Caixa aberto com sucesso!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao abrir caixa');
+      console.error(error);
     },
   });
 
@@ -150,15 +165,36 @@ export function useCashSession(date?: string) {
     },
   });
 
+  // Ensure session exists (for emergency auto-creation when tables/buy-ins are created)
+  const ensureSessionExists = async (): Promise<CashSession> => {
+    if (session) return session;
+    
+    // Auto-create session if one doesn't exist
+    const result = await openSession.mutateAsync({});
+    return result;
+  };
+
+  // Derived states
+  const sessionExists = !!session;
+  const isSessionOpen = session?.is_open === true;
+  const isSessionClosed = session?.is_open === false;
+
   return {
     session,
     chipTypes,
     isLoading,
+    sessionExists,
+    isSessionOpen,
+    isSessionClosed,
+    openSession: openSession.mutate,
+    openSessionAsync: openSession.mutateAsync,
     closeSession: closeSession.mutate,
     closeSessionAsync: closeSession.mutateAsync,
     reopenSession: reopenSession.mutate,
     reopenSessionAsync: reopenSession.mutateAsync,
     updateInitialInventory: updateInitialInventory.mutate,
+    ensureSessionExists,
+    isOpening: openSession.isPending,
     isClosing: closeSession.isPending,
   };
 }
