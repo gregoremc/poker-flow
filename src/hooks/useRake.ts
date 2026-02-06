@@ -19,6 +19,13 @@ export function useRake(date?: string) {
   const queryClient = useQueryClient();
   const targetDate = date || new Date().toISOString().split('T')[0];
 
+  // Helper to invalidate all related queries
+  const invalidateAllQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['rake-entries'] });
+    queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['cash-session'] });
+  };
+
   const { data: rakeEntries = [], isLoading } = useQuery({
     queryKey: ['rake-entries', targetDate],
     queryFn: async () => {
@@ -62,8 +69,7 @@ export function useRake(date?: string) {
       return data as RakeEntry;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rake-entries'] });
-      queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
+      invalidateAllQueries();
       toast.success('Rake registrado!');
     },
     onError: (error) => {
@@ -82,8 +88,7 @@ export function useRake(date?: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rake-entries'] });
-      queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
+      invalidateAllQueries();
       toast.success('Rake excluído!');
     },
     onError: (error) => {

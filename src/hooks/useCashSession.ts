@@ -7,6 +7,16 @@ export function useCashSession(date?: string) {
   const queryClient = useQueryClient();
   const targetDate = date || new Date().toISOString().split('T')[0];
 
+  // Helper to invalidate all related queries
+  const invalidateAllQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['cash-session'] });
+    queryClient.invalidateQueries({ queryKey: ['tables'] });
+    queryClient.invalidateQueries({ queryKey: ['buy-ins'] });
+    queryClient.invalidateQueries({ queryKey: ['cash-outs'] });
+    queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['active-sessions'] });
+  };
+
   // Get or create session for today
   const { data: session, isLoading } = useQuery({
     queryKey: ['cash-session', targetDate],
@@ -53,10 +63,12 @@ export function useCashSession(date?: string) {
   const closeSession = useMutation({
     mutationFn: async ({ 
       finalInventory, 
-      notes 
+      notes,
+      finalBalance
     }: { 
       finalInventory: ChipInventory; 
       notes?: string;
+      finalBalance?: number;
     }) => {
       if (!session?.id) throw new Error('No session found');
 
@@ -76,7 +88,7 @@ export function useCashSession(date?: string) {
       return data as CashSession;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash-session'] });
+      invalidateAllQueries();
       toast.success('Caixa fechado!');
     },
     onError: (error) => {
@@ -104,7 +116,7 @@ export function useCashSession(date?: string) {
       return data as CashSession;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash-session'] });
+      invalidateAllQueries();
       toast.success('Caixa reaberto!');
     },
     onError: (error) => {
@@ -129,7 +141,7 @@ export function useCashSession(date?: string) {
       return data as CashSession;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash-session'] });
+      invalidateAllQueries();
       toast.success('Inventário atualizado!');
     },
     onError: (error) => {
@@ -145,6 +157,7 @@ export function useCashSession(date?: string) {
     closeSession: closeSession.mutate,
     closeSessionAsync: closeSession.mutateAsync,
     reopenSession: reopenSession.mutate,
+    reopenSessionAsync: reopenSession.mutateAsync,
     updateInitialInventory: updateInitialInventory.mutate,
     isClosing: closeSession.isPending,
   };

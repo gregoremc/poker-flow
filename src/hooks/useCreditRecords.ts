@@ -6,6 +6,16 @@ import { toast } from 'sonner';
 export function useCreditRecords() {
   const queryClient = useQueryClient();
 
+  // Helper to invalidate all related queries
+  const invalidateAllQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['credit-records'] });
+    queryClient.invalidateQueries({ queryKey: ['players'] });
+    queryClient.invalidateQueries({ queryKey: ['payment-receipts'] });
+    queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['buy-ins'] });
+    queryClient.invalidateQueries({ queryKey: ['cash-session'] });
+  };
+
   // Get all credit records (both paid and unpaid for history)
   const { data: credits = [], isLoading } = useQuery({
     queryKey: ['credit-records'],
@@ -49,8 +59,7 @@ export function useCreditRecords() {
       return data as CreditRecord;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['credit-records'] });
-      queryClient.invalidateQueries({ queryKey: ['players'] });
+      invalidateAllQueries();
       toast.success('Crédito quitado!');
     },
     onError: (error) => {
@@ -60,6 +69,7 @@ export function useCreditRecords() {
   });
 
   // Receive payment - marks credit as paid and creates a payment receipt
+  // This creates an "entry" in the current cash session
   const receivePaymentMutation = useMutation({
     mutationFn: async ({ 
       creditId, 
@@ -79,7 +89,7 @@ export function useCreditRecords() {
 
       if (creditError) throw creditError;
 
-      // Create payment receipt
+      // Create payment receipt (this is the "entry" in the cash)
       const { error: receiptError } = await supabase
         .from('payment_receipts')
         .insert([{
@@ -92,7 +102,7 @@ export function useCreditRecords() {
 
       if (receiptError) throw receiptError;
 
-      // Mark credit as paid
+      // Mark credit as paid (trigger will update player's credit_balance)
       const { data, error } = await supabase
         .from('credit_records')
         .update({ is_paid: true, paid_at: new Date().toISOString() })
@@ -104,11 +114,8 @@ export function useCreditRecords() {
       return data as CreditRecord;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['credit-records'] });
-      queryClient.invalidateQueries({ queryKey: ['players'] });
-      queryClient.invalidateQueries({ queryKey: ['payment-receipts'] });
-      queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
-      toast.success('Pagamento recebido!');
+      invalidateAllQueries();
+      toast.success('Pagamento recebido! Entrada registrada no caixa.');
     },
     onError: (error) => {
       toast.error('Erro ao receber pagamento');
@@ -122,6 +129,7 @@ export function useCreditRecords() {
 
   return {
     credits,
+    unpaidCredits,
     isLoading,
     getPlayerCredits,
     markAsPaid: markAsPaid.mutate,

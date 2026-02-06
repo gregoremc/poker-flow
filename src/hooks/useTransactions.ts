@@ -75,6 +75,18 @@ export function useTransactions(date?: string) {
     },
   });
 
+  // Helper to invalidate all related queries
+  const invalidateAllQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['buy-ins'] });
+    queryClient.invalidateQueries({ queryKey: ['cash-outs'] });
+    queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['active-sessions'] });
+    queryClient.invalidateQueries({ queryKey: ['players'] });
+    queryClient.invalidateQueries({ queryKey: ['credit-records'] });
+    queryClient.invalidateQueries({ queryKey: ['cash-session'] });
+    queryClient.invalidateQueries({ queryKey: ['table-total'] });
+  };
+
   // Add buy-in
   const addBuyIn = useMutation({
     mutationFn: async ({ 
@@ -110,10 +122,7 @@ export function useTransactions(date?: string) {
       return data as BuyIn;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['buy-ins'] });
-      queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['active-sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['players'] });
+      invalidateAllQueries();
       toast.success('Buy-in registrado!');
     },
     onError: (error) => {
@@ -151,9 +160,7 @@ export function useTransactions(date?: string) {
       return data as CashOut;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash-outs'] });
-      queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['active-sessions'] });
+      invalidateAllQueries();
       toast.success('Cash-out registrado!');
     },
     onError: (error) => {
@@ -162,21 +169,52 @@ export function useTransactions(date?: string) {
     },
   });
 
-  // Delete buy-in
+  // Delete buy-in with smart rollback (handles credit_fiado cleanup via CASCADE)
   const deleteBuyIn = useMutation({
     mutationFn: async (id: string) => {
+      // First, get the buy-in details to check if it was credit_fiado
+      const { data: buyIn, error: fetchError } = await supabase
+        .from('buy_ins')
+        .select('*, player:players(*)')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // If it was credit_fiado, we need to update player's credit_balance
+      // The credit_record will be deleted automatically via CASCADE
+      if (buyIn.payment_method === 'credit_fiado') {
+        // Get the credit record to know the exact amount
+        const { data: creditRecord } = await supabase
+          .from('credit_records')
+          .select('*')
+          .eq('buy_in_id', id)
+          .maybeSingle();
+
+        if (creditRecord && !creditRecord.is_paid) {
+          // Decrease player's credit_balance since we're removing unpaid fiado
+          await supabase
+            .from('players')
+            .update({ 
+              credit_balance: Math.max(0, (buyIn.player?.credit_balance || 0) - creditRecord.amount)
+            })
+            .eq('id', buyIn.player_id);
+        }
+      }
+
+      // Delete the buy-in (credit_records will cascade)
       const { error } = await supabase
         .from('buy_ins')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+      
+      return { buyIn };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['buy-ins'] });
-      queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['active-sessions'] });
-      toast.success('Buy-in excluído!');
+      invalidateAllQueries();
+      toast.success('Buy-in excluído e saldos revertidos!');
     },
     onError: (error) => {
       toast.error('Erro ao excluir buy-in');
@@ -195,9 +233,7 @@ export function useTransactions(date?: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash-outs'] });
-      queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['active-sessions'] });
+      invalidateAllQueries();
       toast.success('Cash-out excluído!');
     },
     onError: (error) => {
