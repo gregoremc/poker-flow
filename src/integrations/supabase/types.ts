@@ -135,6 +135,7 @@ export type Database = {
           id: string
           initial_chip_inventory: Json | null
           is_open: boolean
+          name: string
           notes: string | null
           session_date: string
           updated_at: string
@@ -146,6 +147,7 @@ export type Database = {
           id?: string
           initial_chip_inventory?: Json | null
           is_open?: boolean
+          name?: string
           notes?: string | null
           session_date: string
           updated_at?: string
@@ -157,6 +159,7 @@ export type Database = {
           id?: string
           initial_chip_inventory?: Json | null
           is_open?: boolean
+          name?: string
           notes?: string | null
           session_date?: string
           updated_at?: string

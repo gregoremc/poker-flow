@@ -1,39 +1,63 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useCashSession } from '@/hooks/useCashSession';
-import { useDealers } from '@/hooks/useDealers';
 import { useCreditRecords } from '@/hooks/useCreditRecords';
 import { Header } from '@/components/poker/Header';
 import { BottomNav } from '@/components/poker/BottomNav';
+import { OpenSessionModal } from '@/components/poker/OpenSessionModal';
+import { DeleteSessionModal } from '@/components/poker/DeleteSessionModal';
+import { SessionSelector } from '@/components/poker/SessionSelector';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, TrendingDown, CalendarIcon, Gift, AlertCircle, Users, Lock, LockOpen, Play } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, TrendingDown, CalendarIcon, Gift, AlertCircle, Users, Lock, LockOpen, Play, Plus } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CloseCashModal } from '@/components/poker/CloseCashModal';
-import { toast } from 'sonner';
+import { CashSession } from '@/types/poker';
 
 export default function CashControl() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [showOpenModal, setShowOpenModal] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<CashSession | null>(null);
+  
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   
   const { dailySummary, buyIns, isLoading } = useTransactions(dateStr);
   const { 
-    session, 
-    sessionExists, 
+    sessions,
+    session,
+    hasAnySessions,
+    hasMultipleSessions,
     isSessionOpen, 
     isSessionClosed,
-    openSession, 
+    openSessionAsync,
     reopenSession, 
+    deleteSessionAsync,
     isOpening,
-    isClosing 
-  } = useCashSession(dateStr);
+    isClosing,
+    isDeleting
+  } = useCashSession(dateStr, selectedSessionId);
   const { totalUnpaid: totalCredits } = useCreditRecords();
-  const [showCloseModal, setShowCloseModal] = useState(false);
+
+  // Auto-select first session when date changes
+  useEffect(() => {
+    if (sessions.length > 0 && !selectedSessionId) {
+      const openSession = sessions.find(s => s.is_open);
+      setSelectedSessionId(openSession?.id || sessions[0].id);
+    }
+  }, [sessions, selectedSessionId]);
+
+  // Reset selection when date changes
+  useEffect(() => {
+    setSelectedSessionId(null);
+  }, [dateStr]);
 
   // Calculate payment method breakdown
   const paymentBreakdown = buyIns.reduce(
@@ -54,13 +78,25 @@ export default function CashControl() {
     bonus: 'Bônus',
   };
 
-  // Handle opening a new session
-  const handleOpenSession = () => {
-    openSession({});
+  const handleOpenSession = async (name: string) => {
+    await openSessionAsync({ name });
   };
 
-  const handleOpenCloseModal = () => {
-    setShowCloseModal(true);
+  const handleDeleteSession = (sessionToDelete: CashSession) => {
+    setSessionToDelete(sessionToDelete);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (sessionToDelete) {
+      await deleteSessionAsync(sessionToDelete.id);
+      setSessionToDelete(null);
+      setShowDeleteModal(false);
+      // Reset selection if we deleted the selected session
+      if (sessionToDelete.id === selectedSessionId) {
+        setSelectedSessionId(null);
+      }
+    }
   };
 
   return (
@@ -68,7 +104,7 @@ export default function CashControl() {
       <Header />
 
       <main className="container py-6 space-y-6">
-        {/* Date Picker */}
+        {/* Date Picker + Session Actions */}
         <div className="flex items-center justify-between">
           <Popover>
             <PopoverTrigger asChild>
@@ -88,41 +124,63 @@ export default function CashControl() {
             </PopoverContent>
           </Popover>
 
-          {/* Session controls - 3 states: no session, open, closed */}
+          {/* Session controls */}
           <div className="flex items-center gap-2">
-            {!sessionExists ? (
+            {/* Always show "Add Session" if there are already sessions */}
+            {hasAnySessions && (
               <Button 
-                onClick={handleOpenSession}
+                variant="outline"
+                onClick={() => setShowOpenModal(true)}
+                className="bg-input border-border"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Caixa
+              </Button>
+            )}
+
+            {!hasAnySessions ? (
+              <Button 
+                onClick={() => setShowOpenModal(true)}
                 disabled={isOpening}
                 className="bg-success text-success-foreground hover:bg-success/90"
               >
                 <Play className="mr-2 h-4 w-4" />
                 {isOpening ? 'Abrindo...' : 'Abrir Caixa'}
               </Button>
-            ) : isSessionClosed ? (
+            ) : isSessionClosed && session ? (
               <Button 
                 variant="outline" 
-                onClick={() => reopenSession()}
+                onClick={() => reopenSession(session.id)}
                 className="bg-input border-border"
               >
                 <LockOpen className="mr-2 h-4 w-4" />
-                Reabrir Caixa
+                Reabrir
               </Button>
-            ) : (
+            ) : isSessionOpen && session ? (
               <Button 
-                onClick={handleOpenCloseModal}
+                onClick={() => setShowCloseModal(true)}
                 disabled={isClosing}
                 className="bg-gold text-gold-foreground hover:bg-gold/90"
               >
                 <Lock className="mr-2 h-4 w-4" />
                 {isClosing ? 'Fechando...' : 'Fechar Caixa'}
               </Button>
-            )}
+            ) : null}
           </div>
         </div>
 
+        {/* Session Selector (when multiple sessions exist) */}
+        {hasAnySessions && (
+          <SessionSelector
+            sessions={sessions}
+            selectedSessionId={selectedSessionId}
+            onSelectSession={setSelectedSessionId}
+            onDeleteSession={handleDeleteSession}
+          />
+        )}
+
         {/* Session Status Messages */}
-        {!sessionExists && (
+        {!hasAnySessions && (
           <div className="p-3 rounded-lg bg-muted border border-border flex items-center gap-2">
             <Play className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">
@@ -131,20 +189,20 @@ export default function CashControl() {
           </div>
         )}
 
-        {isSessionClosed && (
+        {session && isSessionClosed && (
           <div className="p-3 rounded-lg bg-muted border border-border flex items-center gap-2">
             <Lock className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">
-              Caixa fechado em {session?.closed_at ? format(new Date(session.closed_at), "dd/MM 'às' HH:mm") : 'data desconhecida'}
+              "{session.name}" fechado em {session.closed_at ? format(new Date(session.closed_at), "dd/MM 'às' HH:mm") : 'data desconhecida'}
             </span>
           </div>
         )}
 
-        {isSessionOpen && (
+        {session && isSessionOpen && (
           <div className="p-3 rounded-lg bg-success/10 border border-success/20 flex items-center gap-2">
             <Play className="h-4 w-4 text-success" />
             <span className="text-sm text-success">
-              Caixa aberto e operando
+              "{session.name}" aberto desde {format(new Date(session.created_at), "HH:mm")}
             </span>
           </div>
         )}
@@ -311,15 +369,32 @@ export default function CashControl() {
 
       <BottomNav />
 
-      {/* Monta o modal somente quando necessário (evita abrir/fechar instantâneo) */}
-      {showCloseModal && (
+      {/* Modals */}
+      <OpenSessionModal
+        open={showOpenModal}
+        onClose={() => setShowOpenModal(false)}
+        onConfirm={handleOpenSession}
+        isLoading={isOpening}
+      />
+
+      <DeleteSessionModal
+        session={sessionToDelete}
+        open={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setSessionToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+      />
+
+      {showCloseModal && session && (
         <CloseCashModal 
           open={true}
           onClose={() => setShowCloseModal(false)}
-          date={dateStr}
+          session={session}
         />
       )}
     </div>
   );
 }
-
