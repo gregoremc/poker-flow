@@ -7,7 +7,7 @@ import { useClubSettings } from '@/hooks/useClubSettings';
 import { useRake } from '@/hooks/useRake';
 import { useDealerPayouts } from '@/hooks/useDealerPayouts';
 import { useTables } from '@/hooks/useTables';
-import { ChipInventory } from '@/types/poker';
+import { ChipInventory, CashSession } from '@/types/poker';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileText, Download, Lock, Loader2, ArrowDownLeft, ArrowUpRight, Users, Gift, AlertCircle, Percent, Wallet } from 'lucide-react';
+import { FileText, Download, Lock, Loader2, ArrowDownLeft, ArrowUpRight, Users, Gift, AlertCircle, Percent, Wallet, Clock } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -30,17 +30,18 @@ import { toast } from 'sonner';
 interface CloseCashModalProps {
   open: boolean;
   onClose: () => void;
-  date: string;
+  session: CashSession;
 }
 
-export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
-  const { dailySummary, dealerTips } = useTransactions(date);
-  const { session, chipTypes, closeSessionAsync, isClosing } = useCashSession(date);
+export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) {
+  const dateStr = session.session_date;
+  const { dailySummary, dealerTips } = useTransactions(dateStr);
+  const { chipTypes, closeSessionAsync, isClosing } = useCashSession(dateStr, session.id);
   const { dealers } = useDealers();
   const { totalUnpaid: totalCredits } = useCreditRecords();
   const { settings } = useClubSettings();
-  const { totalRake, rakeByTable } = useRake(date);
-  const { totalPayouts } = useDealerPayouts(date);
+  const { totalRake, rakeByTable } = useRake(dateStr);
+  const { totalPayouts } = useDealerPayouts(dateStr);
   const { deactivateAllTablesAsync } = useTables();
   
   const [chipInventory, setChipInventory] = useState<ChipInventory>({});
@@ -62,6 +63,11 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
   // Calculate final balance including rake
   const finalBalance = dailySummary.realBalance + totalRake - totalPayouts;
 
+  // Format dates for display
+  const openedAt = format(new Date(session.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  const closedAtDate = new Date();
+  const closedAt = format(closedAtDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+
   const handleClose = async () => {
     setIsProcessing(true);
     try {
@@ -70,6 +76,7 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
       
       // 2. Close the session with final inventory
       await closeSessionAsync({
+        sessionIdToClose: session.id,
         finalInventory: chipInventory,
         notes: notes || undefined,
         finalBalance,
@@ -93,6 +100,7 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
       
       // 2. Close the session with final inventory
       await closeSessionAsync({
+        sessionIdToClose: session.id,
         finalInventory: chipInventory,
         notes: notes || undefined,
         finalBalance,
@@ -120,12 +128,21 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
     doc.text(settings?.club_name || 'Poker Club', pageWidth / 2, y, { align: 'center' });
+    y += 8;
+
+    // Session Name
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(session.name, pageWidth / 2, y, { align: 'center' });
     y += 10;
 
-    doc.setFontSize(12);
+    // Opening and Closing dates/times
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Fechamento de Caixa - ${format(new Date(date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`, pageWidth / 2, y, { align: 'center' });
-    y += 20;
+    doc.text(`Abertura: ${openedAt}`, pageWidth / 2, y, { align: 'center' });
+    y += 5;
+    doc.text(`Fechamento: ${closedAt}`, pageWidth / 2, y, { align: 'center' });
+    y += 15;
 
     // Summary Section
     doc.setFontSize(14);
@@ -275,8 +292,9 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
     doc.setTextColor(128);
     doc.text(`Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
 
-    // Download
-    doc.save(`fechamento-${date}.pdf`);
+    // Download with session name in filename
+    const safeSessionName = session.name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+    doc.save(`fechamento-${safeSessionName}-${dateStr}.pdf`);
   };
 
   return (
@@ -285,12 +303,28 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center gap-2">
             <Lock className="h-5 w-5 text-gold" />
-            Fechar Caixa - {format(new Date(date), "dd/MM/yyyy")}
+            Fechar Caixa - {session.name}
           </DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="max-h-[60vh] pr-4">
           <div className="space-y-6 py-4">
+            {/* Session Times */}
+            <Card className="border-border">
+              <CardContent className="pt-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-success" />
+                  <span className="text-muted-foreground">Abertura:</span>
+                  <span className="font-medium">{openedAt}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-gold" />
+                  <span className="text-muted-foreground">Fechamento:</span>
+                  <span className="font-medium">{closedAt}</span>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Summary Preview */}
             <Card className="border-primary/20">
               <CardContent className="pt-4 space-y-3">

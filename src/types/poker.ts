@@ -44,6 +44,7 @@ export interface ChipInventory {
 
 export interface CashSession {
   id: string;
+  name: string;
   session_date: string;
   is_open: boolean;
   initial_chip_inventory: ChipInventory | null;
