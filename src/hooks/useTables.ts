@@ -19,6 +19,16 @@ export function useTables() {
     },
   });
 
+  // Helper to invalidate all related queries
+  const invalidateAllQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['tables'] });
+    queryClient.invalidateQueries({ queryKey: ['buy-ins'] });
+    queryClient.invalidateQueries({ queryKey: ['cash-outs'] });
+    queryClient.invalidateQueries({ queryKey: ['active-sessions'] });
+    queryClient.invalidateQueries({ queryKey: ['table-total'] });
+    queryClient.invalidateQueries({ queryKey: ['rake-entries'] });
+  };
+
   const addTable = useMutation({
     mutationFn: async (name: string) => {
       const { data, error } = await supabase
@@ -31,7 +41,7 @@ export function useTables() {
       return data as Table;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tables'] });
+      invalidateAllQueries();
       toast.success('Mesa criada!');
     },
     onError: (error) => {
@@ -53,7 +63,7 @@ export function useTables() {
       return data as Table;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tables'] });
+      invalidateAllQueries();
     },
     onError: (error) => {
       toast.error('Erro ao atualizar mesa');
@@ -61,6 +71,26 @@ export function useTables() {
     },
   });
 
+  // Deactivate all tables (used when closing cash)
+  const deactivateAllTables = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('tables')
+        .update({ is_active: false })
+        .eq('is_active', true);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateAllQueries();
+    },
+    onError: (error) => {
+      toast.error('Erro ao desativar mesas');
+      console.error(error);
+    },
+  });
+
+  // Permanently delete a table (CASCADE will clean up related records)
   const deleteTable = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -71,11 +101,11 @@ export function useTables() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tables'] });
-      toast.success('Mesa excluída!');
+      invalidateAllQueries();
+      toast.success('Mesa excluída permanentemente!');
     },
     onError: (error) => {
-      toast.error('Erro ao excluir mesa');
+      toast.error('Erro ao excluir mesa. Verifique se há transações pendentes.');
       console.error(error);
     },
   });
@@ -86,5 +116,7 @@ export function useTables() {
     addTable: addTable.mutate,
     toggleTable: toggleTable.mutate,
     deleteTable: deleteTable.mutate,
+    deactivateAllTables: deactivateAllTables.mutate,
+    deactivateAllTablesAsync: deactivateAllTables.mutateAsync,
   };
 }

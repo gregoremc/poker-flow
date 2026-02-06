@@ -11,7 +11,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ArrowDownLeft, ArrowUpRight, Clock, Filter, CalendarIcon, Trash2, Gift, Users, LayoutGrid } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Clock, Filter, CalendarIcon, Trash2, Gift, Users, LayoutGrid, AlertTriangle } from 'lucide-react';
 import { formatCurrency, formatTime, getPaymentMethodLabel } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { Transaction } from '@/types/poker';
@@ -24,11 +24,11 @@ export default function History() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   
-  const { transactions, deleteBuyIn, deleteCashOut } = useTransactions(dateStr);
+  const { transactions, buyIns, deleteBuyIn, deleteCashOut } = useTransactions(dateStr);
   const { tables } = useTables();
   const [filter, setFilter] = useState<FilterType>('all');
   const [tableFilter, setTableFilter] = useState<string>('all');
-  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; type: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; type: string; isFiado?: boolean } | null>(null);
 
   // Get unique tables from transactions
   const transactionTables = useMemo(() => {
@@ -38,6 +38,12 @@ export default function History() {
     });
     return tables.filter(t => tableIds.has(t.id));
   }, [transactions, tables]);
+
+  // Check if a buy-in is fiado
+  const isBuyInFiado = (id: string) => {
+    const buyIn = buyIns.find(b => b.id === id);
+    return buyIn?.payment_method === 'credit_fiado';
+  };
 
   // Group transactions by hour
   const groupedTransactions = useMemo(() => {
@@ -75,6 +81,11 @@ export default function History() {
       }, 0),
     }));
   }, [transactions, filter, tableFilter]);
+
+  const handleDeleteClick = (id: string, type: string) => {
+    const isFiado = type === 'buy-in' && isBuyInFiado(id);
+    setDeleteConfirm({ id, type, isFiado });
+  };
 
   const handleDelete = (id: string, type: string) => {
     if (type === 'buy-in') {
@@ -238,12 +249,17 @@ export default function History() {
                                   {transaction.is_bonus && (
                                     <Gift className="h-3 w-3 text-purple-500" />
                                   )}
+                                  {transaction.payment_method === 'credit_fiado' && (
+                                    <Badge variant="outline" className="text-2xs border-orange-500 text-orange-500">
+                                      Fiado
+                                    </Badge>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                   {transaction.table_name && <span>{transaction.table_name}</span>}
                                   {transaction.table_name && <span>•</span>}
                                   <span>{formatTime(transaction.timestamp)}</span>
-                                  {transaction.payment_method && (
+                                  {transaction.payment_method && transaction.payment_method !== 'credit_fiado' && (
                                     <>
                                       <span>•</span>
                                       <span>{getPaymentMethodLabel(transaction.payment_method)}</span>
@@ -283,7 +299,7 @@ export default function History() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                                  onClick={() => setDeleteConfirm({ id: transaction.id, type: transaction.type })}
+                                  onClick={() => handleDeleteClick(transaction.id, transaction.type)}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -303,14 +319,26 @@ export default function History() {
 
       <BottomNav />
 
-      {/* Delete Confirmation */}
+      {/* Delete Confirmation with Smart Rollback Warning */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir este {deleteConfirm?.type === 'buy-in' ? 'buy-in' : 'cash-out'}? 
-              Esta ação não pode ser desfeita.
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Desfazer Transação
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Deseja desfazer este {deleteConfirm?.type === 'buy-in' ? 'buy-in' : 'cash-out'}?
+              </p>
+              {deleteConfirm?.isFiado && (
+                <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg text-orange-500 text-sm">
+                  <strong>Atenção:</strong> Este buy-in foi feito com Fiado. Ao excluir, o saldo de crédito do jogador será automaticamente revertido.
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground">
+                O saldo do jogador e os totais da mesa serão atualizados automaticamente.
+              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -319,7 +347,7 @@ export default function History() {
               onClick={() => deleteConfirm && handleDelete(deleteConfirm.id, deleteConfirm.type)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Excluir
+              Desfazer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

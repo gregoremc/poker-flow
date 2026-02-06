@@ -66,6 +66,7 @@ export function useDealerPayouts(date?: string) {
       queryClient.invalidateQueries({ queryKey: ['dealer-payouts'] });
       queryClient.invalidateQueries({ queryKey: ['dealers'] });
       queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['cash-session'] });
       toast.success('Dealer quitado!');
     },
     onError: (error) => {

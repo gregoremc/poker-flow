@@ -6,6 +6,7 @@ import { useCreditRecords } from '@/hooks/useCreditRecords';
 import { useClubSettings } from '@/hooks/useClubSettings';
 import { useRake } from '@/hooks/useRake';
 import { useDealerPayouts } from '@/hooks/useDealerPayouts';
+import { useTables } from '@/hooks/useTables';
 import { ChipInventory } from '@/types/poker';
 import {
   Dialog,
@@ -24,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
+import { toast } from 'sonner';
 
 interface CloseCashModalProps {
   open: boolean;
@@ -39,9 +41,11 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
   const { settings } = useClubSettings();
   const { totalRake, rakeByTable } = useRake(date);
   const { totalPayouts } = useDealerPayouts(date);
+  const { deactivateAllTablesAsync } = useTables();
   
   const [chipInventory, setChipInventory] = useState<ChipInventory>({});
   const [notes, setNotes] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleChipChange = (chipId: string, value: number) => {
     setChipInventory(prev => ({
@@ -55,15 +59,55 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
     return sum + (count * chip.value);
   }, 0);
 
+  // Calculate final balance including rake
+  const finalBalance = dailySummary.realBalance + totalRake - totalPayouts;
+
   const handleClose = async () => {
+    setIsProcessing(true);
     try {
+      // 1. Deactivate all tables first
+      await deactivateAllTablesAsync();
+      
+      // 2. Close the session with final inventory
       await closeSessionAsync({
         finalInventory: chipInventory,
         notes: notes || undefined,
+        finalBalance,
       });
+      
+      toast.success('Caixa fechado e mesas desativadas!');
       onClose();
     } catch (error) {
       console.error('Error closing session:', error);
+      toast.error('Erro ao fechar caixa');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCloseAndDownloadPDF = async () => {
+    setIsProcessing(true);
+    try {
+      // 1. Deactivate all tables first
+      await deactivateAllTablesAsync();
+      
+      // 2. Close the session with final inventory
+      await closeSessionAsync({
+        finalInventory: chipInventory,
+        notes: notes || undefined,
+        finalBalance,
+      });
+      
+      // 3. Generate and download PDF after successful close
+      generatePDF();
+      
+      toast.success('Caixa fechado e PDF gerado!');
+      onClose();
+    } catch (error) {
+      console.error('Error closing session:', error);
+      toast.error('Erro ao fechar caixa');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -110,12 +154,12 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
     if (dailySummary.totalBonuses > 0) {
       addLine('Bônus Concedidos:', formatCurrency(dailySummary.totalBonuses));
     }
-    if (totalCredits > 0) {
-      addLine('Contas a Receber (Fiado):', formatCurrency(totalCredits));
+    if (dailySummary.totalCredits > 0) {
+      addLine('Fiado (Não Recebido):', formatCurrency(dailySummary.totalCredits));
     }
     
     doc.setFont('helvetica', 'bold');
-    addLine('Saldo Real (Caixa Físico):', formatCurrency(dailySummary.realBalance));
+    addLine('Saldo Real (s/ Bônus/Fiado):', formatCurrency(dailySummary.realBalance));
     doc.setFont('helvetica', 'normal');
     y += 10;
 
@@ -173,7 +217,7 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
     }
 
     // Chip Inventory
-    if (Object.keys(chipInventory).length > 0) {
+    if (Object.keys(chipInventory).length > 0 && totalChipValue > 0) {
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('Inventário de Fichas', 14, y);
@@ -195,15 +239,22 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
       y += 10;
     }
 
-    // Final Balance
+    // Final Balance (with Rake included)
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Saldo Final', 14, y);
+    doc.text('Saldo Final (Lucro do Dia)', 14, y);
     y += 10;
     
-    doc.setFontSize(11);
-    const finalBalance = dailySummary.realBalance + totalRake - totalPayouts;
-    addLine('Saldo Operacional + Rake - Saídas Dealer:', formatCurrency(finalBalance));
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    
+    // Show calculation breakdown
+    let calcText = 'Saldo Real';
+    if (totalRake > 0) calcText += ' + Rake';
+    if (totalPayouts > 0) calcText += ' - Saídas Dealer';
+    calcText += ':';
+    
+    addLine(calcText, formatCurrency(finalBalance));
     y += 5;
 
     // Notes
@@ -262,7 +313,7 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
                   </span>
                 </div>
                 <div className="border-t border-border pt-3 flex items-center justify-between">
-                  <span className="font-semibold">Saldo</span>
+                  <span className="font-semibold">Saldo Operacional</span>
                   <span className={cn(
                     'money-value text-xl',
                     dailySummary.balance >= 0 ? 'text-gold' : 'text-destructive'
@@ -279,12 +330,12 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
                       <span className="text-sm font-medium">Rake Total</span>
                     </div>
                     <span className="money-value text-gold font-bold">
-                      {formatCurrency(totalRake)}
+                      +{formatCurrency(totalRake)}
                     </span>
                   </div>
                 )}
 
-                {(dailySummary.totalBonuses > 0 || totalCredits > 0) && (
+                {(dailySummary.totalBonuses > 0 || dailySummary.totalCredits > 0) && (
                   <div className="border-t border-border pt-3 space-y-2">
                     {dailySummary.totalBonuses > 0 && (
                       <div className="flex items-center justify-between text-sm">
@@ -292,16 +343,16 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
                           <Gift className="h-3 w-3 text-purple-500" />
                           <span className="text-muted-foreground">Bônus</span>
                         </div>
-                        <span className="text-purple-500">{formatCurrency(dailySummary.totalBonuses)}</span>
+                        <span className="text-purple-500">-{formatCurrency(dailySummary.totalBonuses)}</span>
                       </div>
                     )}
-                    {totalCredits > 0 && (
+                    {dailySummary.totalCredits > 0 && (
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
                           <AlertCircle className="h-3 w-3 text-orange-500" />
-                          <span className="text-muted-foreground">Fiado</span>
+                          <span className="text-muted-foreground">Fiado (não recebido)</span>
                         </div>
-                        <span className="text-orange-500">{formatCurrency(totalCredits)}</span>
+                        <span className="text-orange-500">-{formatCurrency(dailySummary.totalCredits)}</span>
                       </div>
                     )}
                     <div className="flex items-center justify-between">
@@ -335,6 +386,17 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
                     )}
                   </div>
                 )}
+
+                {/* Final Balance */}
+                <div className="border-t-2 border-gold/50 pt-3 flex items-center justify-between bg-gold/5 -mx-4 px-4 pb-2 rounded-b-lg">
+                  <span className="font-bold text-lg">Lucro Final</span>
+                  <span className={cn(
+                    'money-value text-2xl font-bold',
+                    finalBalance >= 0 ? 'text-gold' : 'text-destructive'
+                  )}>
+                    {formatCurrency(finalBalance)}
+                  </span>
+                </div>
               </CardContent>
             </Card>
 
@@ -383,18 +445,23 @@ export function CloseCashModal({ open, onClose, date }: CloseCashModalProps) {
         <div className="flex gap-3 pt-2">
           <Button
             variant="outline"
-            onClick={generatePDF}
+            onClick={handleCloseAndDownloadPDF}
+            disabled={isProcessing || isClosing}
             className="flex-1 bg-input border-border"
           >
-            <Download className="mr-2 h-4 w-4" />
-            Baixar PDF
+            {isProcessing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            Fechar + PDF
           </Button>
           <Button
             onClick={handleClose}
-            disabled={isClosing}
+            disabled={isProcessing || isClosing}
             className="flex-1 bg-gold text-gold-foreground hover:bg-gold/90"
           >
-            {isClosing ? (
+            {isProcessing || isClosing ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Lock className="mr-2 h-4 w-4" />
