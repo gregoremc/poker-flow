@@ -25,6 +25,7 @@ export interface Dealer {
 export interface Table {
   id: string;
   name: string;
+  session_id: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -45,6 +46,7 @@ export interface ChipInventory {
 export interface CashSession {
   id: string;
   name: string;
+  responsible: string | null;
   session_date: string;
   is_open: boolean;
   initial_chip_inventory: ChipInventory | null;

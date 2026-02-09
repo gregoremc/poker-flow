@@ -3,17 +3,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { Table } from '@/types/poker';
 import { toast } from 'sonner';
 
-export function useTables() {
+export function useTables(sessionId?: string | null) {
   const queryClient = useQueryClient();
 
   const { data: tables = [], isLoading } = useQuery({
-    queryKey: ['tables'],
+    queryKey: ['tables', sessionId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('tables')
         .select('*')
         .order('created_at', { ascending: false });
 
+      if (sessionId) {
+        query = query.eq('session_id', sessionId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as Table[];
     },
@@ -30,10 +35,10 @@ export function useTables() {
   };
 
   const addTable = useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async ({ name, session_id }: { name: string; session_id: string }) => {
       const { data, error } = await supabase
         .from('tables')
-        .insert([{ name }])
+        .insert([{ name, session_id }])
         .select()
         .single();
 
@@ -71,12 +76,13 @@ export function useTables() {
     },
   });
 
-  // Deactivate all tables (used when closing cash)
-  const deactivateAllTables = useMutation({
-    mutationFn: async () => {
+  // Deactivate all tables linked to a session (used when closing cash)
+  const deactivateSessionTables = useMutation({
+    mutationFn: async (targetSessionId: string) => {
       const { error } = await supabase
         .from('tables')
         .update({ is_active: false })
+        .eq('session_id', targetSessionId)
         .eq('is_active', true);
 
       if (error) throw error;
@@ -116,7 +122,7 @@ export function useTables() {
     addTable: addTable.mutate,
     toggleTable: toggleTable.mutate,
     deleteTable: deleteTable.mutate,
-    deactivateAllTables: deactivateAllTables.mutate,
-    deactivateAllTablesAsync: deactivateAllTables.mutateAsync,
+    deactivateSessionTables: deactivateSessionTables.mutate,
+    deactivateSessionTablesAsync: deactivateSessionTables.mutateAsync,
   };
 }

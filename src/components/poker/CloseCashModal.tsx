@@ -42,7 +42,7 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
   const { settings } = useClubSettings();
   const { totalRake, rakeByTable } = useRake(dateStr);
   const { totalPayouts } = useDealerPayouts(dateStr);
-  const { deactivateAllTablesAsync } = useTables();
+  const { deactivateSessionTablesAsync } = useTables(session.id);
   
   const [chipInventory, setChipInventory] = useState<ChipInventory>({});
   const [notes, setNotes] = useState('');
@@ -71,8 +71,8 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
   const handleClose = async () => {
     setIsProcessing(true);
     try {
-      // 1. Deactivate all tables first
-      await deactivateAllTablesAsync();
+      // 1. Deactivate tables linked to this session
+      await deactivateSessionTablesAsync(session.id);
       
       // 2. Close the session with final inventory
       await closeSessionAsync({
@@ -95,8 +95,8 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
   const handleCloseAndDownloadPDF = async () => {
     setIsProcessing(true);
     try {
-      // 1. Deactivate all tables first
-      await deactivateAllTablesAsync();
+      // 1. Deactivate tables linked to this session
+      await deactivateSessionTablesAsync(session.id);
       
       // 2. Close the session with final inventory
       await closeSessionAsync({
@@ -142,6 +142,10 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
     doc.text(`Abertura: ${openedAt}`, pageWidth / 2, y, { align: 'center' });
     y += 5;
     doc.text(`Fechamento: ${closedAt}`, pageWidth / 2, y, { align: 'center' });
+    if (session.responsible) {
+      y += 5;
+      doc.text(`Responsável: ${session.responsible}`, pageWidth / 2, y, { align: 'center' });
+    }
     y += 15;
 
     // Summary Section

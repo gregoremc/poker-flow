@@ -45,6 +45,9 @@ export function SessionSelector({
           <Badge variant={session.is_open ? 'default' : 'secondary'} className="text-xs">
             {session.is_open ? 'Aberto' : 'Fechado'}
           </Badge>
+          {session.responsible && (
+            <span className="text-xs text-muted-foreground">• {session.responsible}</span>
+          )}
           <span className="text-xs text-muted-foreground">
             {format(new Date(session.created_at), "HH:mm", { locale: ptBR })}
           </span>

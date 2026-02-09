@@ -44,7 +44,12 @@ export default function CashControl() {
     isClosing,
     isDeleting
   } = useCashSession(dateStr, selectedSessionId);
-  const { totalUnpaid: totalCredits } = useCreditRecords();
+  const { credits, totalUnpaid: totalCreditsGlobal } = useCreditRecords();
+  
+  // Filter credits by session date only
+  const totalCredits = credits
+    .filter(c => !c.is_paid && c.created_at.startsWith(dateStr))
+    .reduce((sum, c) => sum + Number(c.amount), 0);
 
   // Auto-select first session when date changes
   useEffect(() => {
@@ -78,8 +83,8 @@ export default function CashControl() {
     bonus: 'Bônus',
   };
 
-  const handleOpenSession = async (name: string) => {
-    await openSessionAsync({ name });
+  const handleOpenSession = async (name: string, responsible: string) => {
+    await openSessionAsync({ name, responsible });
   };
 
   const handleDeleteSession = (sessionToDelete: CashSession) => {
