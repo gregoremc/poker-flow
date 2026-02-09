@@ -18,9 +18,9 @@ import { ptBR } from 'date-fns/locale';
 
 export default function Rake() {
   const today = new Date().toISOString().split('T')[0];
-  const { rakeEntries, rakeByTable, totalRake, isLoading, addRake, deleteRake, isAdding } = useRake(today);
-  const { tables } = useTables();
   const { session } = useCashSession(today);
+  const { rakeEntries, rakeByTable, totalRake, isLoading, addRake, deleteRake, isAdding } = useRake(today, session?.id);
+  const { tables } = useTables(session?.id);
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);

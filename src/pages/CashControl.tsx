@@ -29,7 +29,6 @@ export default function CashControl() {
   
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   
-  const { dailySummary, buyIns, isLoading } = useTransactions(dateStr);
   const { 
     sessions,
     session,
@@ -44,6 +43,7 @@ export default function CashControl() {
     isClosing,
     isDeleting
   } = useCashSession(dateStr, selectedSessionId);
+  const { dailySummary, buyIns, isLoading } = useTransactions(dateStr, session?.id);
   const { credits, totalUnpaid: totalCreditsGlobal } = useCreditRecords();
   
   // Filter credits by session date only

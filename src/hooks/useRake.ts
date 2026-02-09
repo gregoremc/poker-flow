@@ -15,7 +15,7 @@ export interface RakeEntry {
   };
 }
 
-export function useRake(date?: string) {
+export function useRake(date?: string, sessionId?: string | null) {
   const queryClient = useQueryClient();
   const targetDate = date || new Date().toISOString().split('T')[0];
 
@@ -27,21 +27,25 @@ export function useRake(date?: string) {
   };
 
   const { data: rakeEntries = [], isLoading } = useQuery({
-    queryKey: ['rake-entries', targetDate],
+    queryKey: ['rake-entries', targetDate, sessionId],
     queryFn: async () => {
-      const startOfDay = `${targetDate}T00:00:00`;
-      const endOfDay = `${targetDate}T23:59:59`;
-
-      const { data, error } = await supabase
+      let query = supabase
         .from('rake_entries')
         .select(`
           *,
           table:tables(id, name)
         `)
-        .gte('created_at', startOfDay)
-        .lte('created_at', endOfDay)
         .order('created_at', { ascending: false });
 
+      if (sessionId) {
+        query = query.eq('session_id', sessionId);
+      } else {
+        const startOfDay = `${targetDate}T00:00:00`;
+        const endOfDay = `${targetDate}T23:59:59`;
+        query = query.gte('created_at', startOfDay).lte('created_at', endOfDay);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as RakeEntry[];
     },
