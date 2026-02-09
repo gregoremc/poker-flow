@@ -88,7 +88,7 @@ export function BuyInModal({ open, onClose, tableId, sessionId }: BuyInModalProp
   const handleCreatePlayer = async () => {
     if (playerSearch.length >= 2) {
       try {
-        const newPlayer = await addPlayer(playerSearch);
+        const newPlayer = await addPlayer({ name: playerSearch });
         setSelectedPlayer({ id: newPlayer.id, name: newPlayer.name, credit_balance: 0 });
         setPlayerPopoverOpen(false);
         setPlayerSearch('');

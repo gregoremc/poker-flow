@@ -10,6 +10,7 @@ import Settings from "./pages/Settings";
 import Dealers from "./pages/Dealers";
 import Rake from "./pages/Rake";
 import Receivables from "./pages/Receivables";
+import Players from "./pages/Players";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/dealers" element={<Dealers />} />
           <Route path="/rake" element={<Rake />} />
           <Route path="/receber" element={<Receivables />} />
+          <Route path="/jogadores" element={<Players />} />
           <Route path="/configuracoes" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
