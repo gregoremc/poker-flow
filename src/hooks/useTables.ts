@@ -9,16 +9,14 @@ export function useTables(sessionId?: string | null) {
   const { data: tables = [], isLoading } = useQuery({
     queryKey: ['tables', sessionId],
     queryFn: async () => {
-      let query = supabase
+      if (!sessionId) return [] as Table[];
+
+      const { data, error } = await supabase
         .from('tables')
         .select('*')
+        .eq('session_id', sessionId)
         .order('created_at', { ascending: false });
 
-      if (sessionId) {
-        query = query.eq('session_id', sessionId);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
       return data as Table[];
     },

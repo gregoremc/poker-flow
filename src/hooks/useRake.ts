@@ -27,25 +27,19 @@ export function useRake(date?: string, sessionId?: string | null) {
   };
 
   const { data: rakeEntries = [], isLoading } = useQuery({
-    queryKey: ['rake-entries', targetDate, sessionId],
+    queryKey: ['rake-entries', sessionId],
     queryFn: async () => {
-      let query = supabase
+      if (!sessionId) return [] as RakeEntry[];
+
+      const { data, error } = await supabase
         .from('rake_entries')
         .select(`
           *,
           table:tables(id, name)
         `)
+        .eq('session_id', sessionId)
         .order('created_at', { ascending: false });
 
-      if (sessionId) {
-        query = query.eq('session_id', sessionId);
-      } else {
-        const startOfDay = `${targetDate}T00:00:00`;
-        const endOfDay = `${targetDate}T23:59:59`;
-        query = query.gte('created_at', startOfDay).lte('created_at', endOfDay);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
       return data as RakeEntry[];
     },
