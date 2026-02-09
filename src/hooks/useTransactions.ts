@@ -79,6 +79,7 @@ export function useTransactions(date?: string, sessionId?: string | null) {
     queryClient.invalidateQueries({ queryKey: ['credit-records'] });
     queryClient.invalidateQueries({ queryKey: ['cash-session'] });
     queryClient.invalidateQueries({ queryKey: ['table-total'] });
+    queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
   };
 
   // Add buy-in

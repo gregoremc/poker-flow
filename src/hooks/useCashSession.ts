@@ -19,6 +19,8 @@ export function useCashSession(date?: string, sessionId?: string | null) {
     queryClient.invalidateQueries({ queryKey: ['rake-entries'] });
     queryClient.invalidateQueries({ queryKey: ['dealer-tips'] });
     queryClient.invalidateQueries({ queryKey: ['dealer-payouts'] });
+    queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+    queryClient.invalidateQueries({ queryKey: ['table-total'] });
   };
 
   // Get ALL sessions for the date (supports multiple sessions per day)

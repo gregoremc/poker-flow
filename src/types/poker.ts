@@ -131,7 +131,7 @@ export interface ClubSettings {
 
 export interface Transaction {
   id: string;
-  type: 'buy-in' | 'cash-out' | 'dealer-tip';
+  type: 'buy-in' | 'cash-out' | 'dealer-tip' | 'audit';
   table_id?: string;
   table_name?: string;
   player_id?: string;
@@ -143,6 +143,8 @@ export interface Transaction {
   profit?: number;
   is_bonus?: boolean;
   timestamp: Date;
+  event_type?: string;
+  description?: string;
 }
 
 export interface DailySummary {

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useAuditLogs } from '@/hooks/useAuditLogs';
 import { useTables } from '@/hooks/useTables';
 import { Header } from '@/components/poker/Header';
 import { BottomNav } from '@/components/poker/BottomNav';
@@ -11,20 +12,21 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ArrowDownLeft, ArrowUpRight, Clock, Filter, CalendarIcon, Trash2, Gift, Users, LayoutGrid, AlertTriangle } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Clock, Filter, CalendarIcon, Trash2, Gift, Users, LayoutGrid, AlertTriangle, FileText, UserMinus, XCircle } from 'lucide-react';
 import { formatCurrency, formatTime, getPaymentMethodLabel } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { Transaction } from '@/types/poker';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-type FilterType = 'all' | 'buy-in' | 'cash-out' | 'dealer-tip';
+type FilterType = 'all' | 'buy-in' | 'cash-out' | 'dealer-tip' | 'audit';
 
 export default function History() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   
   const { transactions, buyIns, deleteBuyIn, deleteCashOut } = useTransactions(dateStr);
+  const { auditLogs } = useAuditLogs(dateStr);
   const { tables } = useTables();
   const [filter, setFilter] = useState<FilterType>('all');
   const [tableFilter, setTableFilter] = useState<string>('all');
@@ -45,15 +47,33 @@ export default function History() {
     return buyIn?.payment_method === 'credit_fiado';
   };
 
+  // Convert audit logs to transactions
+  const auditTransactions: Transaction[] = useMemo(() => {
+    return auditLogs.map(log => ({
+      id: log.id,
+      type: 'audit' as const,
+      amount: log.metadata?.amount ? Number(log.metadata.amount) : 0,
+      timestamp: new Date(log.created_at),
+      event_type: log.event_type,
+      description: log.description,
+      player_name: log.metadata?.player_name || log.metadata?.session_name,
+    }));
+  }, [auditLogs]);
+
+  // Combine all transactions
+  const allTransactions = useMemo(() => {
+    return [...transactions, ...auditTransactions].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }, [transactions, auditTransactions]);
+
   // Group transactions by hour
   const groupedTransactions = useMemo(() => {
     let filtered = filter === 'all' 
-      ? transactions 
-      : transactions.filter((t) => t.type === filter);
+      ? allTransactions 
+      : allTransactions.filter((t) => t.type === filter);
 
-    // Apply table filter
+    // Apply table filter (audit logs have no table)
     if (tableFilter !== 'all') {
-      filtered = filtered.filter((t) => t.table_id === tableFilter);
+      filtered = filtered.filter((t) => t.type === 'audit' || t.table_id === tableFilter);
     }
 
     const groups = new Map<string, Transaction[]>();
@@ -80,7 +100,7 @@ export default function History() {
         return sum;
       }, 0),
     }));
-  }, [transactions, filter, tableFilter]);
+  }, [allTransactions, filter, tableFilter]);
 
   const handleDeleteClick = (id: string, type: string) => {
     const isFiado = type === 'buy-in' && isBuyInFiado(id);
@@ -94,6 +114,26 @@ export default function History() {
       deleteCashOut(id);
     }
     setDeleteConfirm(null);
+  };
+
+  const getAuditIcon = (eventType?: string) => {
+    switch (eventType) {
+      case 'session_deleted': return <Trash2 className="h-4 w-4 text-destructive" />;
+      case 'player_deleted': return <UserMinus className="h-4 w-4 text-orange-500" />;
+      case 'buy_in_cancelled': return <XCircle className="h-4 w-4 text-amber-500" />;
+      case 'cash_out_cancelled': return <XCircle className="h-4 w-4 text-amber-500" />;
+      default: return <FileText className="h-4 w-4 text-muted-foreground" />;
+    }
+  };
+
+  const getAuditColor = (eventType?: string) => {
+    switch (eventType) {
+      case 'session_deleted': return 'bg-destructive/10 text-destructive border-destructive/30';
+      case 'player_deleted': return 'bg-orange-500/10 text-orange-500 border-orange-500/30';
+      case 'buy_in_cancelled':
+      case 'cash_out_cancelled': return 'bg-amber-500/10 text-amber-500 border-amber-500/30';
+      default: return 'bg-muted text-muted-foreground border-border';
+    }
   };
 
   return (
@@ -181,6 +221,16 @@ export default function History() {
           >
             Caixinhas
           </Button>
+          <Button
+            variant={filter === 'audit' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('audit')}
+            className={cn(
+              filter === 'audit' ? 'bg-destructive text-destructive-foreground' : 'bg-input border-border'
+            )}
+          >
+            Sistema
+          </Button>
         </div>
 
         {/* Transaction list */}
@@ -217,97 +267,134 @@ export default function History() {
                   {/* Transactions in this hour */}
                   <div className="space-y-2">
                     {transactions.map((transaction) => (
-                      <Card key={transaction.id} className="card-glow group">
-                        <CardContent className="py-3 px-4">
-                          <div className="flex items-center justify-between">
+                      transaction.type === 'audit' ? (
+                        // Audit log entry
+                        <Card key={transaction.id} className={cn('border', getAuditColor(transaction.event_type))}>
+                          <CardContent className="py-3 px-4">
                             <div className="flex items-center gap-3">
-                              <div 
-                                className={cn(
-                                  'p-2 rounded-lg',
-                                  transaction.type === 'buy-in' 
-                                    ? 'bg-success/10' 
-                                    : transaction.type === 'dealer-tip'
-                                    ? 'bg-purple-500/10'
-                                    : 'bg-gold/10'
-                                )}
-                              >
-                                {transaction.type === 'buy-in' ? (
-                                  <ArrowDownLeft className="h-4 w-4 text-success" />
-                                ) : transaction.type === 'dealer-tip' ? (
-                                  <Users className="h-4 w-4 text-purple-500" />
-                                ) : (
-                                  <ArrowUpRight className="h-4 w-4 text-gold" />
-                                )}
+                              <div className={cn('p-2 rounded-lg', 
+                                transaction.event_type === 'session_deleted' ? 'bg-destructive/10' :
+                                transaction.event_type === 'player_deleted' ? 'bg-orange-500/10' :
+                                'bg-amber-500/10'
+                              )}>
+                                {getAuditIcon(transaction.event_type)}
                               </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium">
-                                    {transaction.type === 'dealer-tip' 
-                                      ? transaction.dealer_name 
-                                      : transaction.player_name}
-                                  </p>
-                                  {transaction.is_bonus && (
-                                    <Gift className="h-3 w-3 text-purple-500" />
+                              <div className="flex-1">
+                                <p className="font-medium text-sm">{transaction.description}</p>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span>{formatTime(transaction.timestamp)}</span>
+                                  <span>•</span>
+                                  <Badge variant="outline" className="text-2xs">
+                                    {transaction.event_type === 'session_deleted' ? 'Exclusão de Caixa' :
+                                     transaction.event_type === 'player_deleted' ? 'Exclusão de Jogador' :
+                                     transaction.event_type === 'buy_in_cancelled' ? 'Estorno de Buy-in' :
+                                     transaction.event_type === 'cash_out_cancelled' ? 'Estorno de Cash-out' :
+                                     'Sistema'}
+                                  </Badge>
+                                </div>
+                              </div>
+                              {transaction.amount > 0 && (
+                                <span className="money-value text-sm text-muted-foreground">
+                                  {formatCurrency(transaction.amount)}
+                                </span>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        // Regular transaction
+                        <Card key={transaction.id} className="card-glow group">
+                          <CardContent className="py-3 px-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div 
+                                  className={cn(
+                                    'p-2 rounded-lg',
+                                    transaction.type === 'buy-in' 
+                                      ? 'bg-success/10' 
+                                      : transaction.type === 'dealer-tip'
+                                      ? 'bg-purple-500/10'
+                                      : 'bg-gold/10'
                                   )}
-                                  {transaction.payment_method === 'credit_fiado' && (
-                                    <Badge variant="outline" className="text-2xs border-orange-500 text-orange-500">
-                                      Fiado
+                                >
+                                  {transaction.type === 'buy-in' ? (
+                                    <ArrowDownLeft className="h-4 w-4 text-success" />
+                                  ) : transaction.type === 'dealer-tip' ? (
+                                    <Users className="h-4 w-4 text-purple-500" />
+                                  ) : (
+                                    <ArrowUpRight className="h-4 w-4 text-gold" />
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium">
+                                      {transaction.type === 'dealer-tip' 
+                                        ? transaction.dealer_name 
+                                        : transaction.player_name}
+                                    </p>
+                                    {transaction.is_bonus && (
+                                      <Gift className="h-3 w-3 text-purple-500" />
+                                    )}
+                                    {transaction.payment_method === 'credit_fiado' && (
+                                      <Badge variant="outline" className="text-2xs border-orange-500 text-orange-500">
+                                        Fiado
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    {transaction.table_name && <span>{transaction.table_name}</span>}
+                                    {transaction.table_name && <span>•</span>}
+                                    <span>{formatTime(transaction.timestamp)}</span>
+                                    {transaction.payment_method && transaction.payment_method !== 'credit_fiado' && (
+                                      <>
+                                        <span>•</span>
+                                        <span>{getPaymentMethodLabel(transaction.payment_method)}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="text-right">
+                                  <p 
+                                    className={cn(
+                                      'money-value text-lg',
+                                      transaction.type === 'buy-in' ? 'text-success' : 
+                                      transaction.type === 'dealer-tip' ? 'text-purple-500' : 'text-gold'
+                                    )}
+                                  >
+                                    {transaction.type === 'buy-in' ? '+' : transaction.type === 'cash-out' ? '-' : ''}
+                                    {formatCurrency(transaction.amount)}
+                                  </p>
+                                  {transaction.type === 'cash-out' && transaction.profit !== undefined && (
+                                    <Badge 
+                                      variant="secondary" 
+                                      className={cn(
+                                        'text-2xs',
+                                        transaction.profit >= 0 
+                                          ? 'bg-success/10 text-success' 
+                                          : 'bg-destructive/10 text-destructive'
+                                      )}
+                                    >
+                                      {transaction.profit >= 0 ? '+' : ''}{formatCurrency(transaction.profit)}
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  {transaction.table_name && <span>{transaction.table_name}</span>}
-                                  {transaction.table_name && <span>•</span>}
-                                  <span>{formatTime(transaction.timestamp)}</span>
-                                  {transaction.payment_method && transaction.payment_method !== 'credit_fiado' && (
-                                    <>
-                                      <span>•</span>
-                                      <span>{getPaymentMethodLabel(transaction.payment_method)}</span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="text-right">
-                                <p 
-                                  className={cn(
-                                    'money-value text-lg',
-                                    transaction.type === 'buy-in' ? 'text-success' : 
-                                    transaction.type === 'dealer-tip' ? 'text-purple-500' : 'text-gold'
-                                  )}
-                                >
-                                  {transaction.type === 'buy-in' ? '+' : transaction.type === 'cash-out' ? '-' : ''}
-                                  {formatCurrency(transaction.amount)}
-                                </p>
-                                {transaction.type === 'cash-out' && transaction.profit !== undefined && (
-                                  <Badge 
-                                    variant="secondary" 
-                                    className={cn(
-                                      'text-2xs',
-                                      transaction.profit >= 0 
-                                        ? 'bg-success/10 text-success' 
-                                        : 'bg-destructive/10 text-destructive'
-                                    )}
+                                {transaction.type !== 'dealer-tip' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                                    onClick={() => handleDeleteClick(transaction.id, transaction.type)}
                                   >
-                                    {transaction.profit >= 0 ? '+' : ''}{formatCurrency(transaction.profit)}
-                                  </Badge>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
                                 )}
                               </div>
-                              {transaction.type !== 'dealer-tip' && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                                  onClick={() => handleDeleteClick(transaction.id, transaction.type)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                          </CardContent>
+                        </Card>
+                      )
                     ))}
                   </div>
                 </div>
