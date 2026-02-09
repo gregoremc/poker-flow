@@ -21,10 +21,15 @@ export function usePlayers() {
   });
 
   const addPlayer = useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async (playerData: { name: string; cpf?: string | null; phone?: string | null; metadata?: Record<string, string> }) => {
       const { data, error } = await supabase
         .from('players')
-        .insert([{ name }])
+        .insert([{
+          name: playerData.name,
+          cpf: playerData.cpf || null,
+          phone: playerData.phone || null,
+          metadata: playerData.metadata || {},
+        }])
         .select()
         .single();
 

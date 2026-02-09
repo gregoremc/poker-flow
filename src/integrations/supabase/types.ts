@@ -491,32 +491,79 @@ export type Database = {
           },
         ]
       }
+      player_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          player_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          player_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_attachments_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       players: {
         Row: {
+          cpf: string | null
           created_at: string
           credit_balance: number
           credit_limit: number
           id: string
           is_active: boolean
+          metadata: Json | null
           name: string
+          phone: string | null
           updated_at: string
         }
         Insert: {
+          cpf?: string | null
           created_at?: string
           credit_balance?: number
           credit_limit?: number
           id?: string
           is_active?: boolean
+          metadata?: Json | null
           name: string
+          phone?: string | null
           updated_at?: string
         }
         Update: {
+          cpf?: string | null
           created_at?: string
           credit_balance?: number
           credit_limit?: number
           id?: string
           is_active?: boolean
+          metadata?: Json | null
           name?: string
+          phone?: string | null
           updated_at?: string
         }
         Relationships: []

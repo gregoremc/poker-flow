@@ -6,11 +6,24 @@ export type PaymentMethod = 'pix' | 'cash' | 'debit' | 'credit' | 'credit_fiado'
 export interface Player {
   id: string;
   name: string;
+  cpf: string | null;
+  phone: string | null;
+  metadata: Record<string, string> | null;
   credit_balance: number;
   credit_limit: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface PlayerAttachment {
+  id: string;
+  player_id: string;
+  file_name: string;
+  file_url: string;
+  file_type: string | null;
+  file_size: number | null;
+  created_at: string;
 }
 
 export interface Dealer {
@@ -66,7 +79,6 @@ export interface BuyIn {
   payment_method: PaymentMethod;
   is_bonus: boolean;
   created_at: string;
-  // Joined fields
   player?: Player;
   table?: Table;
 }
@@ -81,7 +93,6 @@ export interface CashOut {
   profit: number;
   payment_method: PaymentMethod;
   created_at: string;
-  // Joined fields
   player?: Player;
   table?: Table;
 }
@@ -94,7 +105,6 @@ export interface DealerTip {
   amount: number;
   notes: string | null;
   created_at: string;
-  // Joined fields
   dealer?: Dealer;
 }
 
@@ -107,7 +117,6 @@ export interface CreditRecord {
   paid_at: string | null;
   notes: string | null;
   created_at: string;
-  // Joined fields
   player?: Player;
 }
 
@@ -144,7 +153,7 @@ export interface DailySummary {
   totalCredits: number;
   totalDealerTips: number;
   balance: number;
-  realBalance: number; // balance - bonuses
+  realBalance: number;
   transactionCount: number;
 }
 
