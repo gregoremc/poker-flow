@@ -1,149 +1,427 @@
- @tailwind base;
- @tailwind components;
- @tailwind utilities;
- 
- /* Poker Club Financial System - Design System
-    Dark premium theme with emerald green and gold accents
-    All colors in HSL format
- */
- 
- @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
- 
- @layer base {
-   :root {
-     /* Dark poker theme - always dark for immersive experience */
-     --background: 220 20% 7%;
-     --foreground: 210 20% 98%;
- 
-     --card: 220 18% 10%;
-     --card-foreground: 210 20% 98%;
- 
-     --popover: 220 18% 12%;
-     --popover-foreground: 210 20% 98%;
- 
-     /* Emerald green - poker table inspired */
-     --primary: 160 84% 39%;
-     --primary-foreground: 210 20% 98%;
- 
-     --secondary: 220 16% 16%;
-     --secondary-foreground: 210 20% 90%;
- 
-     --muted: 220 14% 14%;
-     --muted-foreground: 215 15% 55%;
- 
-     --accent: 220 16% 18%;
-     --accent-foreground: 210 20% 98%;
- 
-     /* Gold for highlights and money */
-     --gold: 45 93% 58%;
-     --gold-foreground: 220 20% 10%;
- 
-     /* Status colors */
-     --success: 160 84% 39%;
-     --success-foreground: 210 20% 98%;
-     
-     --warning: 38 92% 50%;
-     --warning-foreground: 220 20% 10%;
- 
-     --destructive: 0 72% 51%;
-     --destructive-foreground: 210 20% 98%;
- 
-     --border: 220 13% 18%;
-     --input: 220 14% 14%;
-     --ring: 160 84% 39%;
- 
-     --radius: 0.75rem;
- 
-     /* Sidebar */
-     --sidebar-background: 220 18% 8%;
-     --sidebar-foreground: 210 20% 90%;
-     --sidebar-primary: 160 84% 39%;
-     --sidebar-primary-foreground: 210 20% 98%;
-     --sidebar-accent: 220 16% 14%;
-     --sidebar-accent-foreground: 210 20% 98%;
-     --sidebar-border: 220 13% 16%;
-     --sidebar-ring: 160 84% 39%;
-   }
- }
- 
- @layer base {
-   * {
-     @apply border-border;
-   }
- 
-   html {
-     font-family: 'Inter', system-ui, sans-serif;
-   }
- 
-   body {
-     @apply bg-background text-foreground antialiased;
-   }
- 
-   /* Monospace for money values */
-   .font-mono {
-     font-family: 'JetBrains Mono', monospace;
-   }
- }
- 
- @layer components {
-   /* Touch-friendly button sizes */
-   .touch-target {
-     @apply min-h-[48px] min-w-[48px];
-   }
- 
-   /* Card with subtle glow effect */
-   .card-glow {
-     box-shadow: 0 0 0 1px hsl(var(--border)),
-                 0 4px 24px -4px hsl(220 20% 0% / 0.4);
-   }
- 
-   /* Active table pulse animation */
-   .pulse-live {
-     animation: pulse-live 2s ease-in-out infinite;
-   }
- 
-   @keyframes pulse-live {
-     0%, 100% {
-       box-shadow: 0 0 0 0 hsl(160 84% 39% / 0.4);
-     }
-     50% {
-       box-shadow: 0 0 0 8px hsl(160 84% 39% / 0);
-     }
-   }
- 
-   /* Money value styling */
-   .money-value {
-     @apply font-mono font-semibold tracking-tight;
-   }
- 
-   .money-positive {
-     @apply text-success;
-   }
- 
-   .money-negative {
-     @apply text-destructive;
-   }
- 
-   /* Solid modal backgrounds - no transparency */
-   .modal-solid {
-     @apply bg-popover border border-border;
-   }
- 
-   /* Quick action button */
-   .btn-quick-action {
-     @apply touch-target flex items-center justify-center gap-2 
-            rounded-xl font-semibold transition-all duration-200
-            active:scale-95;
-   }
- }
- 
- @layer utilities {
-   /* Safe area padding for mobile */
-   .safe-area-bottom {
-     padding-bottom: env(safe-area-inset-bottom, 16px);
-   }
- 
-   .safe-area-top {
-     padding-top: env(safe-area-inset-top, 16px);
-   }
- }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
+
+@layer base {
+  /* ===== DEFAULT THEME - DARK ===== */
+  :root,
+  .theme-default.dark {
+    --background: 220 20% 7%;
+    --foreground: 210 20% 98%;
+    --card: 220 18% 10%;
+    --card-foreground: 210 20% 98%;
+    --popover: 220 18% 12%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 220 16% 16%;
+    --secondary-foreground: 210 20% 90%;
+    --muted: 220 14% 14%;
+    --muted-foreground: 215 15% 55%;
+    --accent: 220 16% 18%;
+    --accent-foreground: 210 20% 98%;
+    --gold: 45 93% 58%;
+    --gold-foreground: 220 20% 10%;
+    --success: 160 84% 39%;
+    --success-foreground: 210 20% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 220 20% 10%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 220 13% 18%;
+    --input: 220 14% 14%;
+    --ring: 160 84% 39%;
+    --radius: 0.75rem;
+    --sidebar-background: 220 18% 8%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 160 84% 39%;
+    --sidebar-primary-foreground: 210 20% 98%;
+    --sidebar-accent: 220 16% 14%;
+    --sidebar-accent-foreground: 210 20% 98%;
+    --sidebar-border: 220 13% 16%;
+    --sidebar-ring: 160 84% 39%;
+  }
+
+  /* ===== DEFAULT THEME - LIGHT ===== */
+  .theme-default.light {
+    --background: 0 0% 98%;
+    --foreground: 220 20% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 12%;
+    --primary: 160 84% 32%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 92%;
+    --secondary-foreground: 220 16% 30%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 215 15% 45%;
+    --accent: 220 14% 90%;
+    --accent-foreground: 220 20% 12%;
+    --gold: 45 93% 45%;
+    --gold-foreground: 0 0% 100%;
+    --success: 160 84% 32%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 45%;
+    --warning-foreground: 0 0% 100%;
+    --destructive: 0 72% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 85%;
+    --input: 220 14% 92%;
+    --ring: 160 84% 32%;
+    --sidebar-background: 220 14% 96%;
+    --sidebar-foreground: 220 20% 25%;
+    --sidebar-primary: 160 84% 32%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 90%;
+    --sidebar-accent-foreground: 220 20% 12%;
+    --sidebar-border: 220 13% 88%;
+    --sidebar-ring: 160 84% 32%;
+  }
+
+  /* ===== HIGH ROLLER THEME - DARK ===== */
+  .theme-highroller.dark {
+    --background: 40 10% 5%;
+    --foreground: 40 20% 95%;
+    --card: 40 8% 9%;
+    --card-foreground: 40 20% 95%;
+    --popover: 40 8% 11%;
+    --popover-foreground: 40 20% 95%;
+    --primary: 45 93% 50%;
+    --primary-foreground: 40 10% 5%;
+    --secondary: 40 8% 15%;
+    --secondary-foreground: 40 15% 80%;
+    --muted: 40 6% 13%;
+    --muted-foreground: 40 10% 50%;
+    --accent: 40 8% 17%;
+    --accent-foreground: 40 20% 95%;
+    --gold: 45 93% 58%;
+    --gold-foreground: 40 10% 5%;
+    --success: 140 70% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 30 95% 55%;
+    --warning-foreground: 40 10% 5%;
+    --destructive: 0 80% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 8% 18%;
+    --input: 40 6% 13%;
+    --ring: 45 93% 50%;
+    --sidebar-background: 40 10% 6%;
+    --sidebar-foreground: 40 15% 80%;
+    --sidebar-primary: 45 93% 50%;
+    --sidebar-primary-foreground: 40 10% 5%;
+    --sidebar-accent: 40 8% 14%;
+    --sidebar-accent-foreground: 40 20% 95%;
+    --sidebar-border: 40 8% 16%;
+    --sidebar-ring: 45 93% 50%;
+  }
+
+  /* ===== HIGH ROLLER THEME - LIGHT ===== */
+  .theme-highroller.light {
+    --background: 40 25% 97%;
+    --foreground: 40 15% 10%;
+    --card: 40 30% 99%;
+    --card-foreground: 40 15% 10%;
+    --popover: 40 30% 99%;
+    --popover-foreground: 40 15% 10%;
+    --primary: 45 85% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 20% 90%;
+    --secondary-foreground: 40 15% 25%;
+    --muted: 40 15% 93%;
+    --muted-foreground: 40 10% 45%;
+    --accent: 40 20% 88%;
+    --accent-foreground: 40 15% 10%;
+    --gold: 45 93% 42%;
+    --gold-foreground: 0 0% 100%;
+    --success: 140 70% 35%;
+    --success-foreground: 0 0% 100%;
+    --warning: 30 95% 45%;
+    --warning-foreground: 0 0% 100%;
+    --destructive: 0 75% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 15% 82%;
+    --input: 40 15% 90%;
+    --ring: 45 85% 40%;
+    --sidebar-background: 40 20% 95%;
+    --sidebar-foreground: 40 15% 20%;
+    --sidebar-primary: 45 85% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 20% 88%;
+    --sidebar-accent-foreground: 40 15% 10%;
+    --sidebar-border: 40 15% 85%;
+    --sidebar-ring: 45 85% 40%;
+  }
+
+  /* ===== CYBER THEME - DARK ===== */
+  .theme-cyber.dark {
+    --background: 240 15% 6%;
+    --foreground: 200 20% 95%;
+    --card: 240 12% 10%;
+    --card-foreground: 200 20% 95%;
+    --popover: 240 12% 12%;
+    --popover-foreground: 200 20% 95%;
+    --primary: 185 100% 50%;
+    --primary-foreground: 240 15% 6%;
+    --secondary: 240 10% 16%;
+    --secondary-foreground: 200 15% 80%;
+    --muted: 240 10% 14%;
+    --muted-foreground: 220 12% 50%;
+    --accent: 270 60% 55%;
+    --accent-foreground: 200 20% 95%;
+    --gold: 55 100% 55%;
+    --gold-foreground: 240 15% 6%;
+    --success: 150 90% 45%;
+    --success-foreground: 240 15% 6%;
+    --warning: 35 100% 55%;
+    --warning-foreground: 240 15% 6%;
+    --destructive: 350 90% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 10% 20%;
+    --input: 240 10% 14%;
+    --ring: 185 100% 50%;
+    --sidebar-background: 240 15% 7%;
+    --sidebar-foreground: 200 15% 80%;
+    --sidebar-primary: 185 100% 50%;
+    --sidebar-primary-foreground: 240 15% 6%;
+    --sidebar-accent: 240 10% 15%;
+    --sidebar-accent-foreground: 200 20% 95%;
+    --sidebar-border: 240 10% 18%;
+    --sidebar-ring: 185 100% 50%;
+  }
+
+  /* ===== CYBER THEME - LIGHT ===== */
+  .theme-cyber.light {
+    --background: 220 20% 97%;
+    --foreground: 240 15% 12%;
+    --card: 220 25% 100%;
+    --card-foreground: 240 15% 12%;
+    --popover: 220 25% 100%;
+    --popover-foreground: 240 15% 12%;
+    --primary: 185 100% 35%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 15% 90%;
+    --secondary-foreground: 240 12% 30%;
+    --muted: 220 15% 94%;
+    --muted-foreground: 220 12% 42%;
+    --accent: 270 50% 50%;
+    --accent-foreground: 0 0% 100%;
+    --gold: 55 90% 40%;
+    --gold-foreground: 0 0% 100%;
+    --success: 150 80% 32%;
+    --success-foreground: 0 0% 100%;
+    --warning: 35 95% 42%;
+    --warning-foreground: 0 0% 100%;
+    --destructive: 350 80% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 85%;
+    --input: 220 15% 92%;
+    --ring: 185 100% 35%;
+    --sidebar-background: 220 15% 95%;
+    --sidebar-foreground: 240 12% 25%;
+    --sidebar-primary: 185 100% 35%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 15% 88%;
+    --sidebar-accent-foreground: 240 15% 12%;
+    --sidebar-border: 220 15% 87%;
+    --sidebar-ring: 185 100% 35%;
+  }
+
+  /* ===== FOREST THEME - DARK ===== */
+  .theme-forest.dark {
+    --background: 150 15% 6%;
+    --foreground: 140 15% 95%;
+    --card: 150 12% 10%;
+    --card-foreground: 140 15% 95%;
+    --popover: 150 12% 12%;
+    --popover-foreground: 140 15% 95%;
+    --primary: 145 65% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 150 10% 16%;
+    --secondary-foreground: 140 12% 80%;
+    --muted: 150 8% 14%;
+    --muted-foreground: 150 10% 50%;
+    --accent: 150 10% 18%;
+    --accent-foreground: 140 15% 95%;
+    --gold: 42 85% 52%;
+    --gold-foreground: 150 15% 6%;
+    --success: 130 70% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 35 90% 52%;
+    --warning-foreground: 150 15% 6%;
+    --destructive: 5 75% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 150 8% 18%;
+    --input: 150 8% 14%;
+    --ring: 145 65% 38%;
+    --sidebar-background: 150 15% 7%;
+    --sidebar-foreground: 140 12% 80%;
+    --sidebar-primary: 145 65% 38%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 150 10% 15%;
+    --sidebar-accent-foreground: 140 15% 95%;
+    --sidebar-border: 150 8% 16%;
+    --sidebar-ring: 145 65% 38%;
+  }
+
+  /* ===== FOREST THEME - LIGHT ===== */
+  .theme-forest.light {
+    --background: 140 20% 97%;
+    --foreground: 150 15% 10%;
+    --card: 140 25% 99%;
+    --card-foreground: 150 15% 10%;
+    --popover: 140 25% 99%;
+    --popover-foreground: 150 15% 10%;
+    --primary: 145 60% 30%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 140 15% 90%;
+    --secondary-foreground: 150 12% 28%;
+    --muted: 140 12% 93%;
+    --muted-foreground: 150 10% 42%;
+    --accent: 140 15% 88%;
+    --accent-foreground: 150 15% 10%;
+    --gold: 42 85% 42%;
+    --gold-foreground: 0 0% 100%;
+    --success: 130 65% 32%;
+    --success-foreground: 0 0% 100%;
+    --warning: 35 85% 42%;
+    --warning-foreground: 0 0% 100%;
+    --destructive: 5 70% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 140 12% 84%;
+    --input: 140 12% 91%;
+    --ring: 145 60% 30%;
+    --sidebar-background: 140 15% 95%;
+    --sidebar-foreground: 150 12% 22%;
+    --sidebar-primary: 145 60% 30%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 140 15% 88%;
+    --sidebar-accent-foreground: 150 15% 10%;
+    --sidebar-border: 140 12% 86%;
+    --sidebar-ring: 145 60% 30%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    transition: background-color 300ms ease, color 300ms ease;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+  .touch-target {
+    @apply min-h-[48px] min-w-[48px];
+  }
+
+  /* Card with subtle glow - theme aware */
+  .card-glow {
+    box-shadow: 0 0 0 1px hsl(var(--border)),
+                0 4px 24px -4px hsl(var(--background) / 0.4);
+    transition: box-shadow 300ms ease, border-color 300ms ease, background-color 300ms ease;
+  }
+
+  /* Enhanced card styling */
+  .card-glow:hover {
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.3),
+                0 8px 32px -8px hsl(var(--primary) / 0.15);
+  }
+
+  /* Active table pulse animation */
+  .pulse-live {
+    animation: pulse-live 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-live {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 8px hsl(var(--primary) / 0);
+    }
+  }
+
+  .money-value {
+    @apply font-mono font-semibold tracking-tight;
+  }
+
+  .money-positive {
+    @apply text-success;
+  }
+
+  .money-negative {
+    @apply text-destructive;
+  }
+
+  .modal-solid {
+    @apply bg-popover border border-border;
+  }
+
+  .btn-quick-action {
+    @apply touch-target flex items-center justify-center gap-2 
+           rounded-xl font-semibold transition-all duration-200
+           active:scale-95;
+  }
+
+  /* ===== HIGH ROLLER special effects ===== */
+  .theme-highroller .btn-primary-gradient,
+  .theme-highroller [data-slot="primary-btn"] {
+    background: linear-gradient(135deg, hsl(45 93% 50%), hsl(35 90% 42%));
+    border: 1px solid hsl(45 80% 55% / 0.3);
+  }
+
+  .theme-highroller .btn-primary-gradient:hover,
+  .theme-highroller [data-slot="primary-btn"]:hover {
+    background: linear-gradient(135deg, hsl(45 93% 55%), hsl(35 90% 47%));
+  }
+
+  /* ===== CYBER special effects ===== */
+  .theme-cyber.dark .card-glow {
+    box-shadow: 0 0 0 1px hsl(185 100% 50% / 0.15),
+                0 0 20px -4px hsl(185 100% 50% / 0.08);
+  }
+
+  .theme-cyber.dark .card-glow:hover {
+    box-shadow: 0 0 0 1px hsl(185 100% 50% / 0.35),
+                0 0 30px -4px hsl(185 100% 50% / 0.15);
+  }
+
+  .theme-cyber.dark .pulse-live {
+    animation: pulse-cyber 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-cyber {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsl(185 100% 50% / 0.5),
+                  0 0 15px 0 hsl(185 100% 50% / 0.1);
+    }
+    50% {
+      box-shadow: 0 0 0 8px hsl(185 100% 50% / 0),
+                  0 0 25px 0 hsl(185 100% 50% / 0);
+    }
+  }
+}
+
+@layer utilities {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 16px);
+  }
+}
