@@ -79,6 +79,7 @@ export function usePlayers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['players'] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
       toast.success('Jogador removido!');
     },
     onError: (error) => {
