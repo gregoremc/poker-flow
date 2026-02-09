@@ -71,6 +71,16 @@ export function useCashSession(date?: string, sessionId?: string | null) {
         .single();
 
       if (error) throw error;
+
+      // Auto-fix: link orphan transactions (no session_id) to this new session
+      const sessionId = data.id;
+      await Promise.all([
+        supabase.from('buy_ins').update({ session_id: sessionId }).is('session_id', null),
+        supabase.from('cash_outs').update({ session_id: sessionId }).is('session_id', null),
+        supabase.from('dealer_tips').update({ session_id: sessionId }).is('session_id', null),
+        supabase.from('rake_entries').update({ session_id: sessionId }).is('session_id', null),
+      ]);
+
       return data as CashSession;
     },
     onSuccess: () => {

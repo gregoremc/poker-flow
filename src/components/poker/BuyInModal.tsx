@@ -42,6 +42,7 @@ interface BuyInModalProps {
   open: boolean;
   onClose: () => void;
   tableId: string;
+  sessionId?: string;
 }
 
 const QUICK_AMOUNTS = [50, 100, 200, 300, 500];
@@ -55,7 +56,7 @@ const PAYMENT_METHODS: { value: PaymentMethod; label: string; icon: React.ReactN
   { value: 'bonus', label: 'Bônus', icon: <Gift className="h-4 w-4" />, warning: 'Não conta no caixa real' },
 ];
 
-export function BuyInModal({ open, onClose, tableId }: BuyInModalProps) {
+export function BuyInModal({ open, onClose, tableId, sessionId }: BuyInModalProps) {
   const { players, addPlayer } = usePlayers();
   const { tables } = useTables();
   const { addBuyIn } = useTransactions();
@@ -118,6 +119,7 @@ export function BuyInModal({ open, onClose, tableId }: BuyInModalProps) {
         amount: Number(amount),
         payment_method: paymentMethod,
         is_bonus: paymentMethod === 'bonus',
+        session_id: sessionId,
       });
       handleClose();
     } catch (error: any) {

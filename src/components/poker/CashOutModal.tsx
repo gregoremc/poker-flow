@@ -20,6 +20,7 @@ interface CashOutModalProps {
   open: boolean;
   onClose: () => void;
   tableId: string;
+  sessionId?: string;
 }
 
 const PAYOUT_METHODS: { value: PaymentMethod; label: string; icon: React.ReactNode }[] = [
@@ -28,7 +29,7 @@ const PAYOUT_METHODS: { value: PaymentMethod; label: string; icon: React.ReactNo
   { value: 'debit', label: 'Débito', icon: <CreditCard className="h-4 w-4" /> },
 ];
 
-export function CashOutModal({ open, onClose, tableId }: CashOutModalProps) {
+export function CashOutModal({ open, onClose, tableId, sessionId }: CashOutModalProps) {
   const { tables } = useTables();
   const { addCashOut } = useTransactions();
   const { sessions: activeSessions } = useActiveSessions(tableId);
@@ -53,6 +54,7 @@ export function CashOutModal({ open, onClose, tableId }: CashOutModalProps) {
       total_buy_in: selectedSession.totalBuyIn,
       profit,
       payment_method: paymentMethod,
+      session_id: sessionId,
     });
     handleClose();
   };
