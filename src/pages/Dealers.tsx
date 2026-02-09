@@ -2,16 +2,17 @@ import { useState } from 'react';
 import { useDealers } from '@/hooks/useDealers';
 import { useDealerPayouts } from '@/hooks/useDealerPayouts';
 import { useCashSession } from '@/hooks/useCashSession';
+import { useTables } from '@/hooks/useTables';
 import { PaymentMethod } from '@/types/poker';
 import { Header } from '@/components/poker/Header';
 import { BottomNav } from '@/components/poker/BottomNav';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CurrencyInput } from '@/components/poker/CurrencyInput';
 import { Plus, Users, Trash2, DollarSign, Loader2, Wallet, Check } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 
@@ -27,6 +28,7 @@ export default function Dealers() {
   const { dealers, isLoading, addDealer, deleteDealer, addTip, isAdding } = useDealers();
   const { payoutDealer, isPaying } = useDealerPayouts(today);
   const { session } = useCashSession(today);
+  const { tables } = useTables(session?.id);
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTipModal, setShowTipModal] = useState<string | null>(null);
@@ -34,8 +36,11 @@ export default function Dealers() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [tipAmount, setTipAmount] = useState<number | ''>('');
+  const [tipTableId, setTipTableId] = useState<string>('');
   const [payoutAmount, setPayoutAmount] = useState<number | ''>('');
   const [payoutMethod, setPayoutMethod] = useState<PaymentMethod>('cash');
+
+  const activeTables = tables.filter(t => t.is_active);
 
   const handleAddDealer = async () => {
     if (!newName.trim()) return;
@@ -50,8 +55,14 @@ export default function Dealers() {
 
   const handleAddTip = () => {
     if (!showTipModal || !tipAmount || tipAmount <= 0) return;
-    addTip({ dealer_id: showTipModal, amount: tipAmount, session_id: session?.id });
+    addTip({ 
+      dealer_id: showTipModal, 
+      amount: Number(tipAmount), 
+      session_id: session?.id,
+      table_id: tipTableId || undefined,
+    });
     setTipAmount('');
+    setTipTableId('');
     setShowTipModal(null);
   };
 
@@ -187,11 +198,11 @@ export default function Dealers() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Nome do Dealer</Label>
-              <Input
+              <input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Ex: João Silva"
-                className="bg-input border-border"
+                className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 autoFocus
               />
             </div>
@@ -211,8 +222,8 @@ export default function Dealers() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Tip Modal */}
-      <Dialog open={!!showTipModal} onOpenChange={() => setShowTipModal(null)}>
+      {/* Add Tip Modal - with table selector */}
+      <Dialog open={!!showTipModal} onOpenChange={() => { setShowTipModal(null); setTipTableId(''); }}>
         <DialogContent className="modal-solid sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
@@ -222,13 +233,25 @@ export default function Dealers() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
+              <Label>Mesa</Label>
+              <Select value={tipTableId} onValueChange={setTipTableId}>
+                <SelectTrigger className="bg-input border-border">
+                  <SelectValue placeholder="Selecione a mesa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeTables.map((table) => (
+                    <SelectItem key={table.id} value={table.id}>
+                      {table.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label>Valor da Caixinha</Label>
-              <Input
-                type="number"
+              <CurrencyInput
                 value={tipAmount}
-                onChange={(e) => setTipAmount(e.target.value ? Number(e.target.value) : '')}
-                placeholder="0"
-                className="text-2xl font-mono font-bold text-center bg-input border-border"
+                onChange={setTipAmount}
                 autoFocus
               />
             </div>
@@ -245,12 +268,12 @@ export default function Dealers() {
           </div>
           <Button
             onClick={handleAddTip}
-            disabled={!tipAmount || tipAmount <= 0}
+            disabled={!tipAmount || Number(tipAmount) <= 0}
             className="w-full touch-target bg-gold text-gold-foreground hover:bg-gold/90"
           >
             <DollarSign className="mr-2 h-5 w-5" />
             Adicionar Caixinha
-            {tipAmount && <span className="ml-2 opacity-80">{formatCurrency(Number(tipAmount))}</span>}
+            {tipAmount ? <span className="ml-2 opacity-80">{formatCurrency(Number(tipAmount))}</span> : null}
           </Button>
         </DialogContent>
       </Dialog>
@@ -277,12 +300,9 @@ export default function Dealers() {
             )}
             <div className="space-y-2">
               <Label>Valor a Pagar</Label>
-              <Input
-                type="number"
+              <CurrencyInput
                 value={payoutAmount}
-                onChange={(e) => setPayoutAmount(e.target.value ? Number(e.target.value) : '')}
-                placeholder="0"
-                className="text-2xl font-mono font-bold text-center bg-input border-border"
+                onChange={setPayoutAmount}
               />
             </div>
             <div className="space-y-2">
@@ -303,7 +323,7 @@ export default function Dealers() {
           </div>
           <Button
             onClick={handlePayout}
-            disabled={!payoutAmount || payoutAmount <= 0 || isPaying}
+            disabled={!payoutAmount || Number(payoutAmount) <= 0 || isPaying}
             className="w-full touch-target bg-success text-success-foreground hover:bg-success/90"
           >
             {isPaying ? (

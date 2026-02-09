@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useCashSession } from '@/hooks/useCashSession';
 import { useDealers } from '@/hooks/useDealers';
@@ -38,6 +40,20 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
   const { dailySummary, dealerTips } = useTransactions(dateStr);
   const { chipTypes, closeSessionAsync, isClosing } = useCashSession(dateStr, session.id);
   const { dealers } = useDealers();
+  
+  // Fetch cancelled buy-ins for this session
+  const { data: cancelledBuyIns = [] } = useQuery({
+    queryKey: ['cancelled-buy-ins', session.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cancelled_buy_ins')
+        .select('*')
+        .eq('session_id', session.id)
+        .order('cancelled_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
   const { totalUnpaid: totalCredits } = useCreditRecords();
   const { settings } = useClubSettings();
   const { totalRake, rakeByTable } = useRake(dateStr);
@@ -60,8 +76,8 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
     return sum + (count * chip.value);
   }, 0);
 
-  // Calculate final balance including rake
-  const finalBalance = dailySummary.realBalance + totalRake - totalPayouts;
+  // Final balance: Saldo Real - Dealer Payouts (Rake is informational only)
+  const finalBalance = dailySummary.realBalance - totalPayouts;
 
   // Format dates for display
   const openedAt = format(new Date(session.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
@@ -260,7 +276,7 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
       y += 10;
     }
 
-    // Final Balance (with Rake included)
+    // Final Balance (Rake is informational only)
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('Saldo Final (Lucro do Dia)', 14, y);
@@ -269,14 +285,33 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     
-    // Show calculation breakdown
     let calcText = 'Saldo Real';
-    if (totalRake > 0) calcText += ' + Rake';
     if (totalPayouts > 0) calcText += ' - Saídas Dealer';
     calcText += ':';
     
     addLine(calcText, formatCurrency(finalBalance));
     y += 5;
+
+    // Cancelled Buy-ins Section
+    if (cancelledBuyIns.length > 0) {
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Buy-ins Cancelados', 14, y);
+      y += 10;
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+
+      cancelledBuyIns.forEach((cb: any) => {
+        addLine(`${cb.player_name} (${cb.table_name || 'Mesa'}):`, formatCurrency(Number(cb.amount)));
+      });
+      
+      const totalCancelled = cancelledBuyIns.reduce((sum: number, cb: any) => sum + Number(cb.amount), 0);
+      doc.setFont('helvetica', 'bold');
+      addLine('Total Cancelado:', formatCurrency(totalCancelled));
+      doc.setFont('helvetica', 'normal');
+      y += 5;
+    }
 
     // Notes
     if (notes) {
@@ -422,6 +457,21 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
                         <span className="text-destructive">-{formatCurrency(totalPayouts)}</span>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Cancelled Buy-ins */}
+                {cancelledBuyIns.length > 0 && (
+                  <div className="border-t border-border pt-3 space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-3 w-3 text-destructive" />
+                        <span className="text-muted-foreground">Buy-ins Cancelados ({cancelledBuyIns.length})</span>
+                      </div>
+                      <span className="text-destructive">
+                        {formatCurrency(cancelledBuyIns.reduce((sum: number, cb: any) => sum + Number(cb.amount), 0))}
+                      </span>
+                    </div>
                   </div>
                 )}
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Table } from '@/types/poker';
 import { useTables } from '@/hooks/useTables';
 import { useTableTotal, useActiveSessions } from '@/hooks/useTransactions';
+import { PlayerDetailModal } from '@/components/poker/PlayerDetailModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +22,7 @@ export function TableCard({ table, onBuyIn, onCashOut }: TableCardProps) {
   const { sessions: activeSessions } = useActiveSessions(table.id);
   const playerCount = activeSessions.length;
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<{ id: string; name: string } | null>(null);
 
   const handleDelete = () => {
     deleteTable(table.id);
@@ -83,19 +85,19 @@ export function TableCard({ table, onBuyIn, onCashOut }: TableCardProps) {
             </div>
           </div>
 
-          {/* Active players preview */}
+          {/* Active players - clickable */}
           {playerCount > 0 && (
             <div className="flex flex-wrap gap-1">
-              {activeSessions.slice(0, 3).map((session) => (
-                <Badge key={session.playerId} variant="secondary" className="text-xs">
+              {activeSessions.map((session) => (
+                <Badge 
+                  key={session.playerId} 
+                  variant="secondary" 
+                  className="text-xs cursor-pointer hover:bg-primary/20 transition-colors"
+                  onClick={() => setSelectedPlayer({ id: session.playerId, name: session.playerName })}
+                >
                   {session.playerName.split(' ')[0]}
                 </Badge>
               ))}
-              {playerCount > 3 && (
-                <Badge variant="secondary" className="text-xs">
-                  +{playerCount - 3}
-                </Badge>
-              )}
             </div>
           )}
 
@@ -122,6 +124,19 @@ export function TableCard({ table, onBuyIn, onCashOut }: TableCardProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Player Detail Modal */}
+      {selectedPlayer && (
+        <PlayerDetailModal
+          open={!!selectedPlayer}
+          onClose={() => setSelectedPlayer(null)}
+          playerId={selectedPlayer.id}
+          playerName={selectedPlayer.name}
+          tableId={table.id}
+          tableName={table.name}
+          onNewBuyIn={() => onBuyIn(table.id)}
+        />
+      )}
 
       {/* Delete Confirmation with CASCADE warning */}
       <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>

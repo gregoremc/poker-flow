@@ -69,6 +69,56 @@ export type Database = {
           },
         ]
       }
+      cancelled_buy_ins: {
+        Row: {
+          amount: number
+          cancelled_at: string
+          created_at: string
+          id: string
+          original_buy_in_id: string | null
+          payment_method: string
+          player_id: string
+          player_name: string
+          session_id: string | null
+          table_id: string | null
+          table_name: string | null
+        }
+        Insert: {
+          amount: number
+          cancelled_at?: string
+          created_at?: string
+          id?: string
+          original_buy_in_id?: string | null
+          payment_method: string
+          player_id: string
+          player_name: string
+          session_id?: string | null
+          table_id?: string | null
+          table_name?: string | null
+        }
+        Update: {
+          amount?: number
+          cancelled_at?: string
+          created_at?: string
+          id?: string
+          original_buy_in_id?: string | null
+          payment_method?: string
+          player_id?: string
+          player_name?: string
+          session_id?: string | null
+          table_id?: string | null
+          table_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cancelled_buy_ins_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cash_outs: {
         Row: {
           chip_value: number
@@ -318,6 +368,7 @@ export type Database = {
           id: string
           notes: string | null
           session_id: string | null
+          table_id: string | null
         }
         Insert: {
           amount: number
@@ -326,6 +377,7 @@ export type Database = {
           id?: string
           notes?: string | null
           session_id?: string | null
+          table_id?: string | null
         }
         Update: {
           amount?: number
@@ -334,6 +386,7 @@ export type Database = {
           id?: string
           notes?: string | null
           session_id?: string | null
+          table_id?: string | null
         }
         Relationships: [
           {
@@ -348,6 +401,13 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dealer_tips_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "tables"
             referencedColumns: ["id"]
           },
         ]
