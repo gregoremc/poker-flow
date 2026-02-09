@@ -61,15 +61,16 @@ export function useDealers() {
   });
 
   const addTip = useMutation({
-    mutationFn: async ({ dealer_id, amount, session_id, notes }: { 
+    mutationFn: async ({ dealer_id, amount, session_id, table_id, notes }: { 
       dealer_id: string; 
       amount: number; 
       session_id?: string;
+      table_id?: string;
       notes?: string;
     }) => {
       const { data, error } = await supabase
         .from('dealer_tips')
-        .insert([{ dealer_id, amount, session_id, notes }])
+        .insert([{ dealer_id, amount, session_id, table_id, notes }])
         .select()
         .single();
 

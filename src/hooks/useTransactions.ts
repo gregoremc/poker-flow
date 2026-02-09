@@ -170,21 +170,34 @@ export function useTransactions(date?: string) {
   });
 
   // Delete buy-in with smart rollback (handles credit_fiado cleanup via CASCADE)
+  // Also tracks the cancelled buy-in for reporting
   const deleteBuyIn = useMutation({
     mutationFn: async (id: string) => {
       // First, get the buy-in details to check if it was credit_fiado
       const { data: buyIn, error: fetchError } = await supabase
         .from('buy_ins')
-        .select('*, player:players(*)')
+        .select('*, player:players(*), table:tables(*)')
         .eq('id', id)
         .single();
 
       if (fetchError) throw fetchError;
 
+      // Track the cancelled buy-in for reporting
+      await supabase
+        .from('cancelled_buy_ins')
+        .insert([{
+          original_buy_in_id: buyIn.id,
+          player_id: buyIn.player_id,
+          player_name: buyIn.player?.name || 'Desconhecido',
+          table_id: buyIn.table_id,
+          table_name: buyIn.table?.name || 'Mesa',
+          session_id: buyIn.session_id,
+          amount: buyIn.amount,
+          payment_method: buyIn.payment_method,
+        }]);
+
       // If it was credit_fiado, we need to update player's credit_balance
-      // The credit_record will be deleted automatically via CASCADE
       if (buyIn.payment_method === 'credit_fiado') {
-        // Get the credit record to know the exact amount
         const { data: creditRecord } = await supabase
           .from('credit_records')
           .select('*')
@@ -192,7 +205,6 @@ export function useTransactions(date?: string) {
           .maybeSingle();
 
         if (creditRecord && !creditRecord.is_paid) {
-          // Decrease player's credit_balance since we're removing unpaid fiado
           await supabase
             .from('players')
             .update({ 

@@ -9,9 +9,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { CurrencyInput } from '@/components/poker/CurrencyInput';
 import { ArrowUpRight, TrendingUp, TrendingDown, Minus, ChevronLeft, Smartphone, Banknote, CreditCard } from 'lucide-react';
 import { formatCurrency, formatTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -135,15 +135,12 @@ export function CashOutModal({ open, onClose, tableId }: CashOutModalProps) {
               </div>
             </div>
 
-            {/* Chip value input */}
+            {/* Chip value input with currency mask */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Valor das Fichas</Label>
-              <Input
-                type="number"
-                placeholder="0"
+              <CurrencyInput
                 value={chipValue}
-                onChange={(e) => setChipValue(e.target.value ? Number(e.target.value) : '')}
-                className="touch-target text-2xl font-mono font-bold text-center bg-input border-border"
+                onChange={setChipValue}
                 autoFocus
               />
             </div>

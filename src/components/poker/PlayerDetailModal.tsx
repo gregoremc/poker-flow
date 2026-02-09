@@ -1,0 +1,246 @@
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useCreditRecords } from '@/hooks/useCreditRecords';
+import { useCashSession } from '@/hooks/useCashSession';
+import { PaymentMethod } from '@/types/poker';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { User, Plus, ArrowDownLeft, ArrowUpRight, AlertCircle, DollarSign, Check, Loader2 } from 'lucide-react';
+import { formatCurrency, formatTime, getPaymentMethodLabel } from '@/lib/format';
+import { cn } from '@/lib/utils';
+
+interface PlayerDetailModalProps {
+  open: boolean;
+  onClose: () => void;
+  playerId: string;
+  playerName: string;
+  tableId: string;
+  tableName: string;
+  onNewBuyIn: () => void;
+}
+
+const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
+  { value: 'pix', label: 'PIX' },
+  { value: 'cash', label: 'Dinheiro' },
+  { value: 'debit', label: 'Débito' },
+  { value: 'credit', label: 'Crédito' },
+];
+
+export function PlayerDetailModal({
+  open,
+  onClose,
+  playerId,
+  playerName,
+  tableId,
+  tableName,
+  onNewBuyIn,
+}: PlayerDetailModalProps) {
+  const today = new Date().toISOString().split('T')[0];
+  const { session } = useCashSession(today);
+  const { credits, receivePayment, isReceiving } = useCreditRecords();
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
+
+  // Fetch player transactions for this table in current session
+  const { data: buyIns = [] } = useQuery({
+    queryKey: ['player-buyins', playerId, tableId, session?.id],
+    queryFn: async () => {
+      let query = supabase
+        .from('buy_ins')
+        .select('*')
+        .eq('player_id', playerId)
+        .eq('table_id', tableId)
+        .order('created_at', { ascending: false });
+
+      if (session?.id) {
+        query = query.eq('session_id', session.id);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!playerId,
+  });
+
+  const { data: cashOuts = [] } = useQuery({
+    queryKey: ['player-cashouts', playerId, tableId, session?.id],
+    queryFn: async () => {
+      let query = supabase
+        .from('cash_outs')
+        .select('*')
+        .eq('player_id', playerId)
+        .eq('table_id', tableId)
+        .order('created_at', { ascending: false });
+
+      if (session?.id) {
+        query = query.eq('session_id', session.id);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!playerId,
+  });
+
+  const playerUnpaidCredits = credits.filter(
+    c => c.player_id === playerId && !c.is_paid
+  );
+
+  const totalBuyIns = buyIns.reduce((sum, b) => sum + Number(b.amount), 0);
+  const totalCashOuts = cashOuts.reduce((sum, c) => sum + Number(c.chip_value), 0);
+  const totalFiado = playerUnpaidCredits.reduce((sum, c) => sum + Number(c.amount), 0);
+
+  const handlePayCredit = async (creditId: string) => {
+    await receivePayment({
+      creditId,
+      paymentMethod,
+      sessionId: session?.id,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="modal-solid sm:max-w-lg max-h-[90vh]">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold flex items-center gap-2">
+            <User className="h-5 w-5 text-primary" />
+            {playerName} - {tableName}
+          </DialogTitle>
+        </DialogHeader>
+
+        <ScrollArea className="max-h-[65vh] pr-4">
+          <div className="space-y-4 py-4">
+            {/* Summary */}
+            <div className="grid grid-cols-3 gap-3">
+              <Card className="border-border">
+                <CardContent className="p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Buy-ins</p>
+                  <p className="money-value text-lg text-success">{formatCurrency(totalBuyIns)}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border">
+                <CardContent className="p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Cash-outs</p>
+                  <p className="money-value text-lg text-destructive">{formatCurrency(totalCashOuts)}</p>
+                </CardContent>
+              </Card>
+              {totalFiado > 0 && (
+                <Card className="border-orange-500/20">
+                  <CardContent className="p-3 text-center">
+                    <p className="text-xs text-muted-foreground">Fiado</p>
+                    <p className="money-value text-lg text-orange-500">{formatCurrency(totalFiado)}</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Transactions */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Transações desta sessão</h3>
+              {buyIns.map(b => (
+                <div key={b.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-success/10 border border-success/20">
+                  <div className="flex items-center gap-2">
+                    <ArrowDownLeft className="h-4 w-4 text-success" />
+                    <span className="text-sm">Buy-in</span>
+                    <Badge variant="secondary" className="text-xs">{getPaymentMethodLabel(b.payment_method)}</Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="money-value text-success">{formatCurrency(Number(b.amount))}</span>
+                    <span className="text-xs text-muted-foreground">{formatTime(b.created_at)}</span>
+                  </div>
+                </div>
+              ))}
+              {cashOuts.map(c => (
+                <div key={c.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <div className="flex items-center gap-2">
+                    <ArrowUpRight className="h-4 w-4 text-destructive" />
+                    <span className="text-sm">Cash-out</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="money-value text-destructive">{formatCurrency(Number(c.chip_value))}</span>
+                    <span className="text-xs text-muted-foreground">{formatTime(c.created_at)}</span>
+                  </div>
+                </div>
+              ))}
+              {buyIns.length === 0 && cashOuts.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhuma transação nesta sessão</p>
+              )}
+            </div>
+
+            {/* Unpaid Credits */}
+            {playerUnpaidCredits.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-orange-500 flex items-center gap-1">
+                  <AlertCircle className="h-4 w-4" />
+                  Fiados Pendentes
+                </h3>
+                <div className="space-y-2">
+                  <Label className="text-xs">Forma de pagamento para quitação:</Label>
+                  <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+                    <SelectTrigger className="bg-input border-border h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.map(m => (
+                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {playerUnpaidCredits.map(credit => (
+                  <div key={credit.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-orange-500" />
+                      <span className="money-value text-orange-500">{formatCurrency(Number(credit.amount))}</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handlePayCredit(credit.id)}
+                      disabled={isReceiving}
+                      className="bg-success text-success-foreground hover:bg-success/90 h-7"
+                    >
+                      {isReceiving ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <>
+                          <Check className="h-3 w-3 mr-1" />
+                          Quitar
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          <Button
+            onClick={() => {
+              onClose();
+              onNewBuyIn();
+            }}
+            className="flex-1 bg-primary hover:bg-primary/90"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Buy-in
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

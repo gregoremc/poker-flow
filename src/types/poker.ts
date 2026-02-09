@@ -90,6 +90,7 @@ export interface DealerTip {
   id: string;
   dealer_id: string;
   session_id: string | null;
+  table_id: string | null;
   amount: number;
   notes: string | null;
   created_at: string;
