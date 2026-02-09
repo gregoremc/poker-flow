@@ -37,7 +37,7 @@ interface CloseCashModalProps {
 
 export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) {
   const dateStr = session.session_date;
-  const { dailySummary, dealerTips } = useTransactions(dateStr);
+  const { dailySummary, dealerTips } = useTransactions(dateStr, session.id);
   const { chipTypes, closeSessionAsync, isClosing } = useCashSession(dateStr, session.id);
   const { dealers } = useDealers();
   
@@ -56,8 +56,8 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
   });
   const { totalUnpaid: totalCredits } = useCreditRecords();
   const { settings } = useClubSettings();
-  const { totalRake, rakeByTable } = useRake(dateStr);
-  const { totalPayouts } = useDealerPayouts(dateStr);
+  const { totalRake, rakeByTable } = useRake(dateStr, session.id);
+  const { totalPayouts } = useDealerPayouts(dateStr, session.id);
   const { deactivateSessionTablesAsync } = useTables(session.id);
   
   const [chipInventory, setChipInventory] = useState<ChipInventory>({});

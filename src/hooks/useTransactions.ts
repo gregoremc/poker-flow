@@ -3,73 +3,85 @@ import { supabase } from '@/integrations/supabase/client';
 import { BuyIn, CashOut, PaymentMethod, Transaction, DailySummary, CreditRecord } from '@/types/poker';
 import { toast } from 'sonner';
 
-export function useTransactions(date?: string) {
+export function useTransactions(date?: string, sessionId?: string | null) {
   const queryClient = useQueryClient();
   const targetDate = date || new Date().toISOString().split('T')[0];
 
-  // Buy-ins for a specific date
+  // Buy-ins filtered by session_id when available, otherwise by date
   const { data: buyIns = [], isLoading: loadingBuyIns } = useQuery({
-    queryKey: ['buy-ins', targetDate],
+    queryKey: ['buy-ins', targetDate, sessionId],
     queryFn: async () => {
-      const startOfDay = `${targetDate}T00:00:00`;
-      const endOfDay = `${targetDate}T23:59:59`;
-
-      const { data, error } = await supabase
+      let query = supabase
         .from('buy_ins')
         .select(`
           *,
           player:players(*),
           table:tables(*)
         `)
-        .gte('created_at', startOfDay)
-        .lte('created_at', endOfDay)
         .order('created_at', { ascending: false });
 
+      if (sessionId) {
+        query = query.eq('session_id', sessionId);
+      } else {
+        const startOfDay = `${targetDate}T00:00:00`;
+        const endOfDay = `${targetDate}T23:59:59`;
+        query = query.gte('created_at', startOfDay).lte('created_at', endOfDay);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as BuyIn[];
     },
   });
 
-  // Cash-outs for a specific date
+  // Cash-outs filtered by session_id when available, otherwise by date
   const { data: cashOuts = [], isLoading: loadingCashOuts } = useQuery({
-    queryKey: ['cash-outs', targetDate],
+    queryKey: ['cash-outs', targetDate, sessionId],
     queryFn: async () => {
-      const startOfDay = `${targetDate}T00:00:00`;
-      const endOfDay = `${targetDate}T23:59:59`;
-
-      const { data, error } = await supabase
+      let query = supabase
         .from('cash_outs')
         .select(`
           *,
           player:players(*),
           table:tables(*)
         `)
-        .gte('created_at', startOfDay)
-        .lte('created_at', endOfDay)
         .order('created_at', { ascending: false });
 
+      if (sessionId) {
+        query = query.eq('session_id', sessionId);
+      } else {
+        const startOfDay = `${targetDate}T00:00:00`;
+        const endOfDay = `${targetDate}T23:59:59`;
+        query = query.gte('created_at', startOfDay).lte('created_at', endOfDay);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as CashOut[];
     },
   });
 
-  // Dealer tips for a specific date
+  // Dealer tips filtered by session_id when available, otherwise by date
   const { data: dealerTips = [] } = useQuery({
-    queryKey: ['dealer-tips', targetDate],
+    queryKey: ['dealer-tips', targetDate, sessionId],
     queryFn: async () => {
-      const startOfDay = `${targetDate}T00:00:00`;
-      const endOfDay = `${targetDate}T23:59:59`;
-
-      const { data, error } = await supabase
+      let query = supabase
         .from('dealer_tips')
         .select(`
           *,
           dealer:dealers(*)
         `)
-        .gte('created_at', startOfDay)
-        .lte('created_at', endOfDay)
         .order('created_at', { ascending: false });
 
+      if (sessionId) {
+        query = query.eq('session_id', sessionId);
+      } else {
+        const startOfDay = `${targetDate}T00:00:00`;
+        const endOfDay = `${targetDate}T23:59:59`;
+        query = query.gte('created_at', startOfDay).lte('created_at', endOfDay);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },

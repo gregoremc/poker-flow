@@ -16,26 +16,30 @@ export interface DealerPayout {
   };
 }
 
-export function useDealerPayouts(date?: string) {
+export function useDealerPayouts(date?: string, sessionId?: string | null) {
   const queryClient = useQueryClient();
   const targetDate = date || new Date().toISOString().split('T')[0];
 
   const { data: payouts = [], isLoading } = useQuery({
-    queryKey: ['dealer-payouts', targetDate],
+    queryKey: ['dealer-payouts', targetDate, sessionId],
     queryFn: async () => {
-      const startOfDay = `${targetDate}T00:00:00`;
-      const endOfDay = `${targetDate}T23:59:59`;
-
-      const { data, error } = await supabase
+      let query = supabase
         .from('dealer_payouts')
         .select(`
           *,
           dealer:dealers(id, name)
         `)
-        .gte('created_at', startOfDay)
-        .lte('created_at', endOfDay)
         .order('created_at', { ascending: false });
 
+      if (sessionId) {
+        query = query.eq('session_id', sessionId);
+      } else {
+        const startOfDay = `${targetDate}T00:00:00`;
+        const endOfDay = `${targetDate}T23:59:59`;
+        query = query.gte('created_at', startOfDay).lte('created_at', endOfDay);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as DealerPayout[];
     },

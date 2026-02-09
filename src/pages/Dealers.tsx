@@ -26,8 +26,8 @@ const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
 export default function Dealers() {
   const today = new Date().toISOString().split('T')[0];
   const { dealers, isLoading, addDealer, deleteDealer, addTip, isAdding } = useDealers();
-  const { payoutDealer, isPaying } = useDealerPayouts(today);
   const { session } = useCashSession(today);
+  const { payoutDealer, isPaying } = useDealerPayouts(today, session?.id);
   const { tables } = useTables(session?.id);
   
   const [showAddModal, setShowAddModal] = useState(false);
