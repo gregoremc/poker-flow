@@ -9,15 +9,26 @@ import { PlayerFormModal } from '@/components/poker/PlayerFormModal';
 import { PlayerProfileModal } from '@/components/poker/PlayerProfileModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Loader2, UserCircle, Pencil, AlertCircle } from 'lucide-react';
+import { Plus, Search, Loader2, UserCircle, Pencil, Trash2, AlertCircle } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function Players() {
-  const { players, isLoading, addPlayer, updatePlayer } = usePlayers();
+  const { players, isLoading, addPlayer, updatePlayer, deletePlayer } = usePlayers();
   const { credits } = useCreditRecords();
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [viewingPlayer, setViewingPlayer] = useState<Player | null>(null);
+  const [deletingPlayer, setDeletingPlayer] = useState<Player | null>(null);
 
   const filtered = players.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -106,17 +117,30 @@ export default function Players() {
                       <span className="text-xs font-medium money-value">{formatCurrency(debt)}</span>
                     </div>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingPlayer(player);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingPlayer(player);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-destructive hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeletingPlayer(player);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               );
             })}
@@ -148,6 +172,31 @@ export default function Players() {
           onClose={() => setViewingPlayer(null)}
           player={viewingPlayer}
         />
+      )}
+
+      {deletingPlayer && (
+        <AlertDialog open={!!deletingPlayer} onOpenChange={(isOpen) => !isOpen && setDeletingPlayer(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir jogador</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir <strong>{deletingPlayer.name}</strong>? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  deletePlayer(deletingPlayer.id);
+                  setDeletingPlayer(null);
+                }}
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );
