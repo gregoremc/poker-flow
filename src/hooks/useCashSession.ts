@@ -168,20 +168,25 @@ export function useCashSession(date?: string, sessionId?: string | null) {
   // Delete session (cascade will handle related records)
   const deleteSession = useMutation({
     mutationFn: async (sessionIdToDelete: string) => {
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from('cash_sessions')
         .delete()
-        .eq('id', sessionIdToDelete);
+        .eq('id', sessionIdToDelete)
+        .select();
 
       if (error) throw error;
+      return sessionIdToDelete;
     },
     onSuccess: () => {
+      // Force remove all cached data to prevent ghost sessions
+      queryClient.removeQueries({ queryKey: ['cash-sessions'] });
+      queryClient.removeQueries({ queryKey: ['cash-session'] });
       invalidateAllQueries();
       toast.success('Sessão excluída com sucesso!');
     },
     onError: (error) => {
-      toast.error('Erro ao excluir sessão');
-      console.error(error);
+      toast.error('Erro ao excluir sessão: ' + (error as Error).message);
+      console.error('Delete session error:', error);
     },
   });
 

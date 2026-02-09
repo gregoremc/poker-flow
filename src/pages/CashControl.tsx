@@ -94,12 +94,16 @@ export default function CashControl() {
 
   const handleConfirmDelete = async () => {
     if (sessionToDelete) {
-      await deleteSessionAsync(sessionToDelete.id);
-      setSessionToDelete(null);
-      setShowDeleteModal(false);
-      // Reset selection if we deleted the selected session
-      if (sessionToDelete.id === selectedSessionId) {
-        setSelectedSessionId(null);
+      const deletedId = sessionToDelete.id;
+      try {
+        await deleteSessionAsync(deletedId);
+      } finally {
+        setSessionToDelete(null);
+        setShowDeleteModal(false);
+        // Always reset selection after delete attempt
+        if (deletedId === selectedSessionId) {
+          setSelectedSessionId(null);
+        }
       }
     }
   };
