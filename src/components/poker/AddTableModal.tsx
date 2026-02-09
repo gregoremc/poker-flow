@@ -14,15 +14,16 @@ import { Plus } from 'lucide-react';
 interface AddTableModalProps {
   open: boolean;
   onClose: () => void;
+  sessionId: string;
 }
 
-export function AddTableModal({ open, onClose }: AddTableModalProps) {
-  const { tables, addTable } = useTables();
+export function AddTableModal({ open, onClose, sessionId }: AddTableModalProps) {
+  const { tables, addTable } = useTables(sessionId);
   const [name, setName] = useState('');
 
   const handleSubmit = () => {
     if (!name.trim()) return;
-    addTable(name.trim());
+    addTable({ name: name.trim(), session_id: sessionId });
     handleClose();
   };
 

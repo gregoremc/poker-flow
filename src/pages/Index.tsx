@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTables } from '@/hooks/useTables';
+import { useCashSession } from '@/hooks/useCashSession';
 import { Header } from '@/components/poker/Header';
 import { BottomNav } from '@/components/poker/BottomNav';
 import { TableCard } from '@/components/poker/TableCard';
@@ -7,10 +8,12 @@ import { BuyInModal } from '@/components/poker/BuyInModal';
 import { CashOutModal } from '@/components/poker/CashOutModal';
 import { AddTableModal } from '@/components/poker/AddTableModal';
 import { Button } from '@/components/ui/button';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, AlertCircle } from 'lucide-react';
 
 export default function Index() {
-  const { tables, isLoading } = useTables();
+  const today = new Date().toISOString().split('T')[0];
+  const { session, isSessionOpen, isLoading: loadingSession } = useCashSession(today);
+  const { tables, isLoading } = useTables(session?.id);
   const [buyInTableId, setBuyInTableId] = useState<string | null>(null);
   const [cashOutTableId, setCashOutTableId] = useState<string | null>(null);
   const [showAddTable, setShowAddTable] = useState(false);
@@ -18,7 +21,7 @@ export default function Index() {
   const activeTables = tables.filter((t) => t.is_active);
   const inactiveTables = tables.filter((t) => !t.is_active);
 
-  if (isLoading) {
+  if (isLoading || loadingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -31,17 +34,31 @@ export default function Index() {
       <Header />
 
       <main className="container py-6">
+        {/* Warning if no open session */}
+        {!isSessionOpen && (
+          <div className="p-3 rounded-lg bg-muted border border-border flex items-center gap-2 mb-6">
+            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              Nenhum caixa aberto. Abra um caixa na aba "Caixa" antes de criar mesas.
+            </span>
+          </div>
+        )}
+
         {/* Quick Add Table */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-lg font-semibold">
               Mesas Ativas ({activeTables.length})
             </h2>
+            {session && (
+              <p className="text-xs text-muted-foreground">{session.name}</p>
+            )}
           </div>
           <Button
             onClick={() => setShowAddTable(true)}
             size="sm"
             className="bg-primary hover:bg-primary/90"
+            disabled={!isSessionOpen}
           >
             <Plus className="h-4 w-4 mr-1" />
             Nova Mesa
@@ -63,14 +80,16 @@ export default function Index() {
               <p className="text-muted-foreground mb-4">
                 Nenhuma mesa ativa no momento
               </p>
-              <Button
-                onClick={() => setShowAddTable(true)}
-                variant="outline"
-                className="border-primary/30 text-primary hover:bg-primary/10"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Criar primeira mesa
-              </Button>
+              {isSessionOpen && (
+                <Button
+                  onClick={() => setShowAddTable(true)}
+                  variant="outline"
+                  className="border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar primeira mesa
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -108,10 +127,13 @@ export default function Index() {
         onClose={() => setCashOutTableId(null)}
         tableId={cashOutTableId || ''}
       />
-      <AddTableModal
-        open={showAddTable}
-        onClose={() => setShowAddTable(false)}
-      />
+      {session && (
+        <AddTableModal
+          open={showAddTable}
+          onClose={() => setShowAddTable(false)}
+          sessionId={session.id}
+        />
+      )}
     </div>
   );
 }

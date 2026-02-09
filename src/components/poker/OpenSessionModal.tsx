@@ -14,31 +14,38 @@ import { Play, Loader2 } from 'lucide-react';
 interface OpenSessionModalProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: (name: string) => Promise<void>;
+  onConfirm: (name: string, responsible: string) => Promise<void>;
   isLoading?: boolean;
 }
 
 export function OpenSessionModal({ open, onClose, onConfirm, isLoading }: OpenSessionModalProps) {
   const [name, setName] = useState('');
-  const [error, setError] = useState('');
+  const [responsible, setResponsible] = useState('');
+  const [errors, setErrors] = useState<{ name?: string; responsible?: string }>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name.trim()) {
-      setError('Nome da sessão é obrigatório');
+    const newErrors: { name?: string; responsible?: string } = {};
+    if (!name.trim()) newErrors.name = 'Nome do caixa é obrigatório';
+    if (!responsible.trim()) newErrors.responsible = 'Nome do responsável é obrigatório';
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
     
-    setError('');
-    await onConfirm(name.trim());
+    setErrors({});
+    await onConfirm(name.trim(), responsible.trim());
     setName('');
+    setResponsible('');
     onClose();
   };
 
   const handleClose = () => {
     setName('');
-    setError('');
+    setResponsible('');
+    setErrors({});
     onClose();
   };
 
@@ -54,7 +61,7 @@ export function OpenSessionModal({ open, onClose, onConfirm, isLoading }: OpenSe
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="session-name">Nome da Sessão *</Label>
+            <Label htmlFor="session-name">Nome do Caixa *</Label>
             <Input
               id="session-name"
               value={name}
@@ -63,13 +70,28 @@ export function OpenSessionModal({ open, onClose, onConfirm, isLoading }: OpenSe
               className="bg-input border-border"
               autoFocus
             />
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
+            {errors.name && (
+              <p className="text-sm text-destructive">{errors.name}</p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Dê um nome para identificar este caixa. Você pode ter múltiplos caixas no mesmo dia.
-            </p>
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="session-responsible">Nome do Responsável *</Label>
+            <Input
+              id="session-responsible"
+              value={responsible}
+              onChange={(e) => setResponsible(e.target.value)}
+              placeholder="Ex: João, Maria..."
+              className="bg-input border-border"
+            />
+            {errors.responsible && (
+              <p className="text-sm text-destructive">{errors.responsible}</p>
+            )}
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Dê um nome para identificar este caixa. Você pode ter múltiplos caixas no mesmo dia.
+          </p>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose}>

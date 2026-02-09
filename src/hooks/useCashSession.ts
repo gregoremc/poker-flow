@@ -57,11 +57,12 @@ export function useCashSession(date?: string, sessionId?: string | null) {
 
   // Open a new session for the date with a name
   const openSession = useMutation({
-    mutationFn: async ({ name, initialInventory }: { name: string; initialInventory?: ChipInventory }) => {
+    mutationFn: async ({ name, responsible, initialInventory }: { name: string; responsible?: string; initialInventory?: ChipInventory }) => {
       const { data, error } = await supabase
         .from('cash_sessions')
         .insert([{ 
           name,
+          responsible: responsible || null,
           session_date: targetDate,
           initial_chip_inventory: initialInventory || {},
           is_open: true

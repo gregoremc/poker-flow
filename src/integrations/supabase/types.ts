@@ -137,6 +137,7 @@ export type Database = {
           is_open: boolean
           name: string
           notes: string | null
+          responsible: string | null
           session_date: string
           updated_at: string
         }
@@ -149,6 +150,7 @@ export type Database = {
           is_open?: boolean
           name?: string
           notes?: string | null
+          responsible?: string | null
           session_date: string
           updated_at?: string
         }
@@ -161,6 +163,7 @@ export type Database = {
           is_open?: boolean
           name?: string
           notes?: string | null
+          responsible?: string | null
           session_date?: string
           updated_at?: string
         }
@@ -506,6 +509,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          session_id: string | null
           updated_at: string
         }
         Insert: {
@@ -513,6 +517,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          session_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -520,9 +525,18 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          session_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tables_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
