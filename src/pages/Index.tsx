@@ -121,11 +121,13 @@ export default function Index() {
         open={!!buyInTableId}
         onClose={() => setBuyInTableId(null)}
         tableId={buyInTableId || ''}
+        sessionId={session?.id}
       />
       <CashOutModal
         open={!!cashOutTableId}
         onClose={() => setCashOutTableId(null)}
         tableId={cashOutTableId || ''}
+        sessionId={session?.id}
       />
       {session && (
         <AddTableModal
