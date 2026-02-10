@@ -25,7 +25,7 @@ export default function History() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   
-  const { transactions, buyIns, deleteBuyIn, deleteCashOut } = useTransactions(dateStr);
+  const { transactions, buyIns, deleteBuyIn, deleteCashOut, deleteDealerTip } = useTransactions(dateStr);
   const { auditLogs } = useAuditLogs(dateStr);
   const { tables } = useTables();
   const [filter, setFilter] = useState<FilterType>('all');
@@ -112,6 +112,8 @@ export default function History() {
       deleteBuyIn(id);
     } else if (type === 'cash-out') {
       deleteCashOut(id);
+    } else if (type === 'dealer-tip') {
+      deleteDealerTip(id);
     }
     setDeleteConfirm(null);
   };
@@ -122,6 +124,7 @@ export default function History() {
       case 'player_deleted': return <UserMinus className="h-4 w-4 text-orange-500" />;
       case 'buy_in_cancelled': return <XCircle className="h-4 w-4 text-amber-500" />;
       case 'cash_out_cancelled': return <XCircle className="h-4 w-4 text-amber-500" />;
+      case 'dealer_tip_cancelled': return <XCircle className="h-4 w-4 text-amber-500" />;
       default: return <FileText className="h-4 w-4 text-muted-foreground" />;
     }
   };
@@ -131,7 +134,8 @@ export default function History() {
       case 'session_deleted': return 'bg-destructive/10 text-destructive border-destructive/30';
       case 'player_deleted': return 'bg-orange-500/10 text-orange-500 border-orange-500/30';
       case 'buy_in_cancelled':
-      case 'cash_out_cancelled': return 'bg-amber-500/10 text-amber-500 border-amber-500/30';
+      case 'cash_out_cancelled':
+      case 'dealer_tip_cancelled': return 'bg-amber-500/10 text-amber-500 border-amber-500/30';
       default: return 'bg-muted text-muted-foreground border-border';
     }
   };
@@ -289,6 +293,7 @@ export default function History() {
                                      transaction.event_type === 'player_deleted' ? 'Exclusão de Jogador' :
                                      transaction.event_type === 'buy_in_cancelled' ? 'Estorno de Buy-in' :
                                      transaction.event_type === 'cash_out_cancelled' ? 'Estorno de Cash-out' :
+                                     transaction.event_type === 'dealer_tip_cancelled' ? 'Estorno de Caixinha' :
                                      'Sistema'}
                                   </Badge>
                                 </div>
@@ -380,8 +385,7 @@ export default function History() {
                                     </Badge>
                                   )}
                                 </div>
-                                {transaction.type !== 'dealer-tip' && (
-                                  <Button
+                                <Button
                                     variant="ghost"
                                     size="icon"
                                     className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
@@ -389,7 +393,6 @@ export default function History() {
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
-                                )}
                               </div>
                             </div>
                           </CardContent>
@@ -416,7 +419,7 @@ export default function History() {
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <p>
-                Deseja desfazer este {deleteConfirm?.type === 'buy-in' ? 'buy-in' : 'cash-out'}?
+                Deseja desfazer {deleteConfirm?.type === 'buy-in' ? 'este buy-in' : deleteConfirm?.type === 'cash-out' ? 'este cash-out' : 'esta caixinha'}?
               </p>
               {deleteConfirm?.isFiado && (
                 <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg text-orange-500 text-sm">
