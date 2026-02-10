@@ -86,6 +86,9 @@ export function useAuditLogs(date?: string) {
       const meta = log.metadata;
 
       if (log.event_type === 'buy_in_cancelled') {
+        if (!meta.player_id || !meta.table_id) {
+          throw new Error('Registro antigo sem dados completos. Não é possível desfazer.');
+        }
         const { error } = await supabase.from('buy_ins').insert([{
           player_id: meta.player_id,
           table_id: meta.table_id,
@@ -115,6 +118,9 @@ export function useAuditLogs(date?: string) {
           }
         }
       } else if (log.event_type === 'cash_out_cancelled') {
+        if (!meta.player_id || !meta.table_id) {
+          throw new Error('Registro antigo sem dados completos. Não é possível desfazer.');
+        }
         const { error } = await supabase.from('cash_outs').insert([{
           player_id: meta.player_id,
           table_id: meta.table_id,
