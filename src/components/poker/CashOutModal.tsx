@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CurrencyInput } from '@/components/poker/CurrencyInput';
-import { ArrowUpRight, TrendingUp, TrendingDown, Minus, ChevronLeft, Smartphone, Banknote, CreditCard } from 'lucide-react';
+import { ArrowUpRight, TrendingUp, TrendingDown, Minus, ChevronLeft, Smartphone, Banknote, CreditCard, Coins } from 'lucide-react';
 import { formatCurrency, formatTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +27,7 @@ const PAYOUT_METHODS: { value: PaymentMethod; label: string; icon: React.ReactNo
   { value: 'pix', label: 'PIX', icon: <Smartphone className="h-4 w-4" /> },
   { value: 'cash', label: 'Dinheiro', icon: <Banknote className="h-4 w-4" /> },
   { value: 'debit', label: 'Débito', icon: <CreditCard className="h-4 w-4" /> },
+  { value: 'fichas', label: 'Fichas', icon: <Coins className="h-4 w-4" /> },
 ];
 
 export function CashOutModal({ open, onClose, tableId, sessionId }: CashOutModalProps) {

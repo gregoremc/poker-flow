@@ -35,6 +35,7 @@ const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: 'cash', label: 'Dinheiro' },
   { value: 'debit', label: 'Débito' },
   { value: 'credit', label: 'Crédito' },
+  { value: 'fichas', label: 'Fichas' },
 ];
 
 export function PlayerDetailModal({

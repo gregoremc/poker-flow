@@ -45,6 +45,7 @@ export function getPaymentMethodLabel(method: PaymentMethod | string): string {
     credit: 'Crédito',
     credit_fiado: 'Fiado',
     bonus: 'Bônus',
+    fichas: 'Fichas',
   };
   return labels[method] || method;
 }
