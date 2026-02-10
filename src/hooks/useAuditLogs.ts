@@ -118,12 +118,29 @@ export function useAuditLogs(date?: string) {
           }
         }
       } else if (log.event_type === 'cash_out_cancelled') {
-        if (!meta.player_id || !meta.table_id) {
+        if (!meta.player_id) {
           throw new Error('Registro antigo sem dados completos. Não é possível desfazer.');
         }
+
+        let tableId = meta.table_id;
+
+        // If table_id is missing, try to find it from the session's tables
+        if (!tableId && meta.session_id) {
+          const { data: sessionTables } = await supabase
+            .from('tables')
+            .select('id')
+            .eq('session_id', meta.session_id)
+            .limit(1);
+          tableId = sessionTables?.[0]?.id;
+        }
+
+        if (!tableId) {
+          throw new Error('Não foi possível identificar a mesa. Registro incompleto.');
+        }
+
         const { error } = await supabase.from('cash_outs').insert([{
           player_id: meta.player_id,
-          table_id: meta.table_id,
+          table_id: tableId,
           session_id: meta.session_id,
           chip_value: meta.chip_value,
           total_buy_in: meta.total_buy_in,
