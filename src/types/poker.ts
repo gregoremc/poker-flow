@@ -1,7 +1,7 @@
 // Core types for Poker Club Financial System
 // Note: Supabase returns dates as strings, not Date objects
 
-export type PaymentMethod = 'pix' | 'cash' | 'debit' | 'credit' | 'credit_fiado' | 'bonus';
+export type PaymentMethod = 'pix' | 'cash' | 'debit' | 'credit' | 'credit_fiado' | 'bonus' | 'fichas';
 
 export interface Player {
   id: string;

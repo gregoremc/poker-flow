@@ -81,6 +81,7 @@ export default function CashControl() {
     credit: 'Crédito',
     credit_fiado: 'Fiado',
     bonus: 'Bônus',
+    fichas: 'Fichas',
   };
 
   const handleOpenSession = async (name: string, responsible: string) => {
@@ -222,7 +223,7 @@ export default function CashControl() {
           <CardContent className="pt-6 relative">
             <div className="text-center">
               <p className="text-sm text-muted-foreground uppercase tracking-wider mb-2">
-                Saldo do Dia
+                Saldo do Caixa
               </p>
               <div className="flex items-center justify-center gap-3">
                 <Wallet className="h-8 w-8 text-primary" />

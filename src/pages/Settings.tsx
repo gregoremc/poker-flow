@@ -6,13 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, Save, Loader2, Spade, DollarSign } from 'lucide-react';
+import { Upload, Save, Loader2, Spade } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Settings() {
   const { settings, isLoading, updateSettings, isUpdating, uploadLogo } = useClubSettings();
   const [clubName, setClubName] = useState('');
-  const [creditLimit, setCreditLimit] = useState<number>(500);
+  
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -20,7 +20,7 @@ export default function Settings() {
   useState(() => {
     if (settings) {
       setClubName(settings.club_name);
-      setCreditLimit(settings.credit_limit_per_player);
+      
     }
   });
 
@@ -52,7 +52,6 @@ export default function Settings() {
 
     updateSettings({ 
       club_name: clubName.trim(),
-      credit_limit_per_player: creditLimit,
     });
   };
 
@@ -134,32 +133,6 @@ export default function Settings() {
               />
               <p className="text-xs text-muted-foreground">
                 Este nome aparecerá no cabeçalho e nos PDFs gerados.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Financial Settings */}
-        <Card className="card-glow">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-gold" />
-              Configurações Financeiras
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Credit Limit */}
-            <div className="space-y-2">
-              <Label>Limite de Crédito por Jogador (R$)</Label>
-              <Input
-                type="number"
-                value={creditLimit || settings?.credit_limit_per_player || 500}
-                onChange={(e) => setCreditLimit(Number(e.target.value))}
-                placeholder="500"
-                className="bg-input border-border"
-              />
-              <p className="text-xs text-muted-foreground">
-                Limite máximo de fiado permitido por jogador.
               </p>
             </div>
           </CardContent>
