@@ -30,12 +30,14 @@ export const CANCELLED_EVENTS = [
   'rake_cancelled',
 ];
 
-// Which event types support undo (re-insert)
+// Which event types support undo
 const UNDOABLE_EVENTS: Record<string, string> = {
   'buy_in_cancelled': 'buy_ins',
   'cash_out_cancelled': 'cash_outs',
   'dealer_tip_cancelled': 'dealer_tips',
   'rake_cancelled': 'rake_entries',
+  'buy_in_created': 'buy_ins',
+  'cash_out_created': 'cash_outs',
 };
 
 export function useAuditLogs(date?: string) {
@@ -77,15 +79,59 @@ export function useAuditLogs(date?: string) {
     queryClient.invalidateQueries({ queryKey: ['dealer-payouts'] });
   };
 
-  // Undo a cancelled action by re-inserting the original record
+  // Undo an action: re-insert cancelled records OR delete created records
   const undoAction = useMutation({
     mutationFn: async (log: AuditLog) => {
-      const table = UNDOABLE_EVENTS[log.event_type];
-      if (!table) throw new Error('Ação não suporta desfazer');
+      if (!UNDOABLE_EVENTS[log.event_type]) throw new Error('Ação não suporta desfazer');
 
       const meta = log.metadata;
 
-      if (log.event_type === 'buy_in_cancelled') {
+      // --- UNDO for CREATED events (reverse the action = delete the record) ---
+      if (log.event_type === 'buy_in_created') {
+        const buyInId = meta.buy_in_id;
+        if (!buyInId) throw new Error('Registro sem ID. Não é possível desfazer.');
+
+        // Check if buy-in still exists
+        const { data: existing } = await supabase.from('buy_ins').select('id').eq('id', buyInId).maybeSingle();
+        if (!existing) throw new Error('Buy-in já foi excluído.');
+
+        // If credit_fiado, revert credit balance
+        if (meta.payment_method === 'credit_fiado') {
+          const { data: creditRecord } = await supabase
+            .from('credit_records')
+            .select('*')
+            .eq('buy_in_id', buyInId)
+            .maybeSingle();
+
+          if (creditRecord && !creditRecord.is_paid) {
+            const { data: player } = await supabase.from('players').select('credit_balance').eq('id', meta.player_id).single();
+            if (player) {
+              await supabase
+                .from('players')
+                .update({ credit_balance: Math.max(0, Number(player.credit_balance) - Number(creditRecord.amount)) })
+                .eq('id', meta.player_id);
+            }
+          }
+        }
+
+        // Delete the buy-in (cascades credit_records)
+        const { error } = await supabase.from('buy_ins').delete().eq('id', buyInId);
+        if (error) throw error;
+
+      } else if (log.event_type === 'cash_out_created') {
+        const cashOutId = meta.cash_out_id;
+        if (!cashOutId) throw new Error('Registro sem ID. Não é possível desfazer.');
+
+        // Check if cash-out still exists
+        const { data: existing } = await supabase.from('cash_outs').select('id').eq('id', cashOutId).maybeSingle();
+        if (!existing) throw new Error('Cash-out já foi excluído.');
+
+        // Delete the cash-out (player returns to table)
+        const { error } = await supabase.from('cash_outs').delete().eq('id', cashOutId);
+        if (error) throw error;
+
+      // --- UNDO for CANCELLED events (restore the record = re-insert) ---
+      } else if (log.event_type === 'buy_in_cancelled') {
         if (!meta.player_id || !meta.table_id) {
           throw new Error('Registro antigo sem dados completos. Não é possível desfazer.');
         }
@@ -124,7 +170,6 @@ export function useAuditLogs(date?: string) {
 
         let tableId = meta.table_id;
 
-        // If table_id is missing, try to find it from the session's tables
         if (!tableId && meta.session_id) {
           const { data: sessionTables } = await supabase
             .from('tables')
@@ -170,9 +215,10 @@ export function useAuditLogs(date?: string) {
       // Delete the audit log entry after successful undo
       await supabase.from('audit_logs').delete().eq('id', log.id);
     },
-    onSuccess: () => {
+    onSuccess: (_, log) => {
       invalidateAll();
-      toast.success('Ação desfeita com sucesso! Registro restaurado.');
+      const isCreated = log.event_type.endsWith('_created');
+      toast.success(isCreated ? 'Ação revertida! Registro excluído.' : 'Ação desfeita! Registro restaurado.');
     },
     onError: (error) => {
       toast.error('Erro ao desfazer ação: ' + (error as Error).message);
