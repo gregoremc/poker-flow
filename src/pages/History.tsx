@@ -355,22 +355,33 @@ export default function History() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <Undo2 className="h-5 w-5 text-primary" />
-              Desfazer Ação
+              {undoConfirm?.event_type.endsWith('_created') ? 'Reverter Ação' : 'Desfazer Estorno'}
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
-              <p>Deseja restaurar o registro original?</p>
+              <p>
+                {undoConfirm?.event_type.endsWith('_created')
+                  ? 'Deseja reverter esta operação? O registro será excluído e o jogador voltará ao estado anterior.'
+                  : 'Deseja restaurar o registro original?'}
+              </p>
               {undoConfirm && (
-                <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg text-sm">
+                <div className={cn(
+                  'p-3 border rounded-lg text-sm',
+                  undoConfirm.event_type.endsWith('_created')
+                    ? 'bg-destructive/10 border-destructive/30'
+                    : 'bg-primary/10 border-primary/30'
+                )}>
                   <p className="font-medium">{undoConfirm.description}</p>
-                  {undoConfirm.metadata?.amount && (
+                  {(undoConfirm.metadata?.amount || undoConfirm.metadata?.chip_value) && (
                     <p className="text-muted-foreground mt-1">
                       Valor: {formatCurrency(Number(undoConfirm.metadata.amount || undoConfirm.metadata.chip_value))}
                     </p>
                   )}
                 </div>
               )}
-              <p className="text-sm text-muted-foreground">
-                O registro será reinserido no banco e os saldos serão recalculados automaticamente.
+              <p className="text-sm text-destructive font-medium">
+                ⚠️ {undoConfirm?.event_type.endsWith('_created')
+                  ? 'O registro será removido e os saldos recalculados.'
+                  : 'O registro será reinserido e os saldos recalculados.'}
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -378,11 +389,15 @@ export default function History() {
             <AlertDialogCancel className="bg-input border-border">Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmUndo}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              className={cn(
+                undoConfirm?.event_type.endsWith('_created')
+                  ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
+              )}
               disabled={isUndoing}
             >
               <Undo2 className="h-4 w-4 mr-2" />
-              Desfazer
+              {undoConfirm?.event_type.endsWith('_created') ? 'Reverter' : 'Desfazer'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
