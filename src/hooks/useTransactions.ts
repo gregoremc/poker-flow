@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { BuyIn, CashOut, PaymentMethod, Transaction, DailySummary, CreditRecord } from '@/types/poker';
 import { toast } from 'sonner';
+import { generateFiadoReceipt } from '@/lib/thermalReceipt';
 
 export function useTransactions(date?: string, sessionId?: string | null) {
   const queryClient = useQueryClient();
@@ -112,6 +113,20 @@ export function useTransactions(date?: string, sessionId?: string | null) {
         await supabase
           .from('credit_records')
           .insert([{ player_id, buy_in_id: data.id, amount }]);
+
+        // Get player name and club settings for thermal receipt
+        const [{ data: playerData }, { data: settingsData }] = await Promise.all([
+          supabase.from('players').select('name').eq('id', player_id).single(),
+          supabase.from('club_settings').select('club_name').limit(1).single(),
+        ]);
+
+        // Auto-generate thermal receipt PDF
+        generateFiadoReceipt({
+          playerName: playerData?.name || 'Jogador',
+          playerId: player_id,
+          amount,
+          clubName: settingsData?.club_name,
+        });
       }
 
       return data as BuyIn;

@@ -37,7 +37,7 @@ interface CloseCashModalProps {
 
 export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) {
   const dateStr = session.session_date;
-  const { dailySummary, dealerTips } = useTransactions(dateStr, session.id);
+  const { dailySummary, dealerTips, buyIns, cashOuts } = useTransactions(dateStr, session.id);
   const { chipTypes, closeSessionAsync, isClosing } = useCashSession(dateStr, session.id);
   const { dealers } = useDealers();
   
@@ -138,7 +138,15 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
   const generatePDF = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     let y = 20;
+
+    const checkPageBreak = (needed: number) => {
+      if (y + needed > pageHeight - 20) {
+        doc.addPage();
+        y = 20;
+      }
+    };
 
     // Header
     doc.setFontSize(20);
@@ -174,6 +182,7 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
     doc.setFont('helvetica', 'normal');
     
     const addLine = (label: string, value: string) => {
+      checkPageBreak(10);
       doc.text(label, 14, y);
       doc.text(value, pageWidth - 14, y, { align: 'right' });
       y += 7;
@@ -202,6 +211,7 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
 
     // Rake Section
     if (totalRake > 0) {
+      checkPageBreak(30);
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('Rake (Comissão da Casa)', 14, y);
@@ -220,16 +230,18 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
       y += 10;
     }
 
-    // Dealer Tips
-    if (dailySummary.totalDealerTips > 0) {
+    // Dealer Tips + Payouts
+    if (dailySummary.totalDealerTips > 0 || totalPayouts > 0) {
+      checkPageBreak(40);
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('Caixinhas de Dealers', 14, y);
+      doc.text('Dealers', 14, y);
       y += 10;
 
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
       
+      // Group tips by dealer
       const dealerTipSummary = dealerTips.reduce((acc: Record<string, number>, tip: { dealer_id: string; amount: number }) => {
         acc[tip.dealer_id] = (acc[tip.dealer_id] || 0) + Number(tip.amount);
         return acc;
@@ -237,46 +249,31 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
 
       Object.entries(dealerTipSummary).forEach(([dealerId, amount]) => {
         const dealer = dealers.find(d => d.id === dealerId);
-        addLine(dealer?.name || 'Dealer', formatCurrency(amount as number));
+        addLine(`  Caixinha - ${dealer?.name || 'Dealer'}:`, formatCurrency(amount as number));
       });
       
       doc.setFont('helvetica', 'bold');
       addLine('Total Caixinhas:', formatCurrency(dailySummary.totalDealerTips));
       doc.setFont('helvetica', 'normal');
-      y += 5;
 
+      // Dealer Payouts (amounts paid out)
       if (totalPayouts > 0) {
-        doc.setTextColor(220, 53, 69); // red
+        y += 3;
+        // Fetch dealer payouts detail
+        const dealerPayoutSummary = dealerTips.reduce((acc: Record<string, string>, tip: { dealer_id: string; dealer?: { name: string } }) => {
+          if (tip.dealer?.name) acc[tip.dealer_id] = tip.dealer.name;
+          return acc;
+        }, {});
+
+        doc.setTextColor(220, 53, 69);
         addLine('Saída (Pagamento Dealers):', `-${formatCurrency(totalPayouts)}`);
-        doc.setTextColor(0); // reset
+        doc.setTextColor(0);
       }
       y += 5;
     }
 
-    // Chip Inventory
-    if (Object.keys(chipInventory).length > 0 && totalChipValue > 0) {
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Inventário de Fichas', 14, y);
-      y += 10;
-
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-
-      chipTypes.forEach(chip => {
-        const count = chipInventory[chip.id] || 0;
-        if (count > 0) {
-          addLine(`${chip.color} (${formatCurrency(chip.value)}):`, `${count} un = ${formatCurrency(count * chip.value)}`);
-        }
-      });
-      
-      doc.setFont('helvetica', 'bold');
-      addLine('Total em Fichas:', formatCurrency(totalChipValue));
-      doc.setFont('helvetica', 'normal');
-      y += 10;
-    }
-
-    // Final Balance (Rake is informational only)
+    // Final Balance
+    checkPageBreak(25);
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('Saldo Final (Lucro do Dia)', 14, y);
@@ -294,6 +291,7 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
 
     // Cancelled Buy-ins Section
     if (cancelledBuyIns.length > 0) {
+      checkPageBreak(30);
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('Buy-ins Cancelados', 14, y);
@@ -313,8 +311,79 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
       y += 5;
     }
 
+    // ====== NEW: Extrato de Movimentações do Dia ======
+    checkPageBreak(30);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Extrato de Movimentações do Dia', 14, y);
+    y += 10;
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+
+    // Table header
+    doc.setFont('helvetica', 'bold');
+    doc.text('Hora', 14, y);
+    doc.text('Tipo', 40, y);
+    doc.text('Jogador/Dealer', 70, y);
+    doc.text('Valor', pageWidth - 14, y, { align: 'right' });
+    y += 2;
+    doc.setDrawColor(200);
+    doc.line(14, y, pageWidth - 14, y);
+    y += 5;
+
+    doc.setFont('helvetica', 'normal');
+
+    // Sort all transactions by time
+    const allMovements = [
+      ...buyIns.map(b => ({
+        time: new Date(b.created_at),
+        type: b.is_bonus ? 'Bônus' : b.payment_method === 'credit_fiado' ? 'Fiado' : 'Buy-in',
+        name: b.player?.name || 'Desconhecido',
+        amount: Number(b.amount),
+        isEntry: true,
+        method: b.payment_method,
+      })),
+      ...cashOuts.map(c => ({
+        time: new Date(c.created_at),
+        type: 'Cash-out',
+        name: c.player?.name || 'Desconhecido',
+        amount: Number(c.chip_value),
+        isEntry: false,
+        method: c.payment_method,
+      })),
+      ...dealerTips.map((t: any) => ({
+        time: new Date(t.created_at),
+        type: 'Caixinha',
+        name: t.dealer?.name || 'Dealer',
+        amount: Number(t.amount),
+        isEntry: true,
+        method: 'cash' as string,
+      })),
+    ].sort((a, b) => a.time.getTime() - b.time.getTime());
+
+    allMovements.forEach(mov => {
+      checkPageBreak(8);
+      const timeStr = format(mov.time, 'HH:mm');
+      doc.text(timeStr, 14, y);
+      doc.text(mov.type, 40, y);
+      const truncName = mov.name.length > 20 ? mov.name.substring(0, 18) + '...' : mov.name;
+      doc.text(truncName, 70, y);
+      const prefix = mov.isEntry ? '+' : '-';
+      doc.text(`${prefix}${formatCurrency(mov.amount)}`, pageWidth - 14, y, { align: 'right' });
+      y += 6;
+    });
+
+    y += 5;
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    checkPageBreak(8);
+    doc.text(`Total de movimentações: ${allMovements.length}`, 14, y);
+    y += 10;
+
     // Notes
     if (notes) {
+      checkPageBreak(25);
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('Observações', 14, y);
