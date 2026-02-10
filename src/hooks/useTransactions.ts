@@ -264,6 +264,28 @@ export function useTransactions(date?: string, sessionId?: string | null) {
     },
   });
 
+  // Delete dealer tip
+  const deleteDealerTip = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('dealer_tips')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateAllQueries();
+      queryClient.invalidateQueries({ queryKey: ['dealer-tips'] });
+      queryClient.invalidateQueries({ queryKey: ['dealers'] });
+      toast.success('Caixinha excluída!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao excluir caixinha');
+      console.error(error);
+    },
+  });
+
   // Get daily summary
   const dailySummary: DailySummary = {
     date: targetDate,
@@ -326,6 +348,7 @@ export function useTransactions(date?: string, sessionId?: string | null) {
     addCashOut: addCashOut.mutate,
     deleteBuyIn: deleteBuyIn.mutate,
     deleteCashOut: deleteCashOut.mutate,
+    deleteDealerTip: deleteDealerTip.mutate,
   };
 }
 
