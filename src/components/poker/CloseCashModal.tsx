@@ -9,7 +9,7 @@ import { useClubSettings } from '@/hooks/useClubSettings';
 import { useRake } from '@/hooks/useRake';
 import { useDealerPayouts } from '@/hooks/useDealerPayouts';
 import { useTables } from '@/hooks/useTables';
-import { ChipInventory, CashSession } from '@/types/poker';
+import { CashSession } from '@/types/poker';
 import {
   Dialog,
   DialogContent,
@@ -38,7 +38,7 @@ interface CloseCashModalProps {
 export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) {
   const dateStr = session.session_date;
   const { dailySummary, dealerTips, buyIns, cashOuts } = useTransactions(dateStr, session.id);
-  const { chipTypes, closeSessionAsync, isClosing } = useCashSession(dateStr, session.id);
+  const { closeSessionAsync, isClosing } = useCashSession(dateStr, session.id);
   const { dealers } = useDealers();
   
   // Fetch cancelled buy-ins for this session
@@ -60,21 +60,8 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
   const { totalPayouts } = useDealerPayouts(dateStr, session.id);
   const { deactivateSessionTablesAsync } = useTables(session.id);
   
-  const [chipInventory, setChipInventory] = useState<ChipInventory>({});
   const [notes, setNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-
-  const handleChipChange = (chipId: string, value: number) => {
-    setChipInventory(prev => ({
-      ...prev,
-      [chipId]: value
-    }));
-  };
-
-  const totalChipValue = chipTypes.reduce((sum, chip) => {
-    const count = chipInventory[chip.id] || 0;
-    return sum + (count * chip.value);
-  }, 0);
 
   // Final balance: Saldo Real - Dealer Payouts (Rake is informational only)
   const finalBalance = dailySummary.realBalance - totalPayouts;
@@ -93,7 +80,6 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
       // 2. Close the session with final inventory
       await closeSessionAsync({
         sessionIdToClose: session.id,
-        finalInventory: chipInventory,
         notes: notes || undefined,
         finalBalance,
       });
@@ -117,7 +103,6 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
       // 2. Close the session with final inventory
       await closeSessionAsync({
         sessionIdToClose: session.id,
-        finalInventory: chipInventory,
         notes: notes || undefined,
         finalBalance,
       });
@@ -557,34 +542,7 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
               </CardContent>
             </Card>
 
-            {/* Chip Inventory */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Inventário Final de Fichas</Label>
-              <div className="grid grid-cols-2 gap-3">
-                {chipTypes.map(chip => (
-                  <div key={chip.id} className="flex items-center gap-2">
-                    <div 
-                      className="w-4 h-4 rounded-full border border-border"
-                      style={{ backgroundColor: chip.color.toLowerCase() }}
-                    />
-                    <span className="text-sm flex-1">{chip.color} ({formatCurrency(chip.value)})</span>
-                    <Input
-                      type="number"
-                      value={chipInventory[chip.id] || ''}
-                      onChange={(e) => handleChipChange(chip.id, Number(e.target.value) || 0)}
-                      className="w-20 h-8 text-center bg-input border-border"
-                      placeholder="0"
-                    />
-                  </div>
-                ))}
-              </div>
-              {totalChipValue > 0 && (
-                <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border">
-                  <span className="text-sm font-medium">Total em Fichas:</span>
-                  <span className="money-value text-gold">{formatCurrency(totalChipValue)}</span>
-                </div>
-              )}
-            </div>
+
 
             {/* Notes */}
             <div className="space-y-2">

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { CashSession, ChipInventory, ChipType } from '@/types/poker';
+import { CashSession } from '@/types/poker';
 import { toast } from 'sonner';
 
 export function useCashSession(date?: string, sessionId?: string | null) {
@@ -43,30 +43,18 @@ export function useCashSession(date?: string, sessionId?: string | null) {
     ? sessions.find(s => s.id === sessionId) 
     : sessions.find(s => s.is_open) || sessions[0] || null;
 
-  // Get chip types
-  const { data: chipTypes = [] } = useQuery({
-    queryKey: ['chip-types'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('chip_types')
-        .select('*')
-        .order('sort_order');
 
-      if (error) throw error;
-      return data as ChipType[];
-    },
-  });
 
   // Open a new session for the date with a name
   const openSession = useMutation({
-    mutationFn: async ({ name, responsible, initialInventory }: { name: string; responsible?: string; initialInventory?: ChipInventory }) => {
+    mutationFn: async ({ name, responsible }: { name: string; responsible?: string }) => {
       const { data, error } = await supabase
         .from('cash_sessions')
         .insert([{ 
           name,
           responsible: responsible || null,
           session_date: targetDate,
-          initial_chip_inventory: initialInventory || {},
+          initial_chip_inventory: {},
           is_open: true
         }])
         .select()
@@ -99,12 +87,10 @@ export function useCashSession(date?: string, sessionId?: string | null) {
   const closeSession = useMutation({
     mutationFn: async ({ 
       sessionIdToClose,
-      finalInventory, 
       notes,
       finalBalance
     }: { 
       sessionIdToClose?: string;
-      finalInventory: ChipInventory; 
       notes?: string;
       finalBalance?: number;
     }) => {
@@ -115,7 +101,7 @@ export function useCashSession(date?: string, sessionId?: string | null) {
         .from('cash_sessions')
         .update({
           is_open: false,
-          final_chip_inventory: finalInventory,
+          final_chip_inventory: {},
           notes,
           closed_at: new Date().toISOString(),
         })
@@ -190,30 +176,7 @@ export function useCashSession(date?: string, sessionId?: string | null) {
     },
   });
 
-  // Update initial inventory
-  const updateInitialInventory = useMutation({
-    mutationFn: async (inventory: ChipInventory) => {
-      if (!session?.id) throw new Error('No session found');
 
-      const { data, error } = await supabase
-        .from('cash_sessions')
-        .update({ initial_chip_inventory: inventory })
-        .eq('id', session.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as CashSession;
-    },
-    onSuccess: () => {
-      invalidateAllQueries();
-      toast.success('Inventário atualizado!');
-    },
-    onError: (error) => {
-      toast.error('Erro ao atualizar inventário');
-      console.error(error);
-    },
-  });
 
   // Derived states
   const hasAnySessions = sessions.length > 0;
@@ -232,7 +195,7 @@ export function useCashSession(date?: string, sessionId?: string | null) {
     
     // Current/selected session
     session,
-    chipTypes,
+    
     isLoading: isLoadingSessions,
     sessionExists,
     isSessionOpen,
@@ -247,7 +210,7 @@ export function useCashSession(date?: string, sessionId?: string | null) {
     reopenSessionAsync: reopenSession.mutateAsync,
     deleteSession: deleteSession.mutate,
     deleteSessionAsync: deleteSession.mutateAsync,
-    updateInitialInventory: updateInitialInventory.mutate,
+    
     
     // Loading states
     isOpening: openSession.isPending,
