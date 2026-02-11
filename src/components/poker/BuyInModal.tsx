@@ -202,11 +202,6 @@ export function BuyInModal({ open, onClose, tableId, sessionId }: BuyInModalProp
                               )}
                             />
                             <span className="flex-1">{player.name}</span>
-                            {player.credit_balance > 0 && (
-                              <span className="text-xs text-destructive">
-                                Fiado: {formatCurrency(player.credit_balance)}
-                              </span>
-                            )}
                           </CommandItem>
                         ))}
                         {canCreateNewPlayer && filteredPlayers.length > 0 && (
