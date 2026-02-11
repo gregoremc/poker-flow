@@ -54,7 +54,7 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
       return data;
     },
   });
-  const { totalUnpaid: totalCredits } = useCreditRecords();
+  const { totalUnpaid: totalCredits, paymentReceipts } = useCreditRecords();
   const { settings } = useClubSettings();
   const { totalRake, rakeByTable } = useRake(dateStr, session.id);
   const { totalPayouts } = useDealerPayouts(dateStr, session.id);
@@ -320,6 +320,9 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
     doc.setFont('helvetica', 'normal');
 
     // Sort all transactions by time
+    // Filter payment receipts for this session
+    const sessionReceipts = paymentReceipts.filter((r: any) => r.session_id === session.id);
+
     const allMovements = [
       ...buyIns.map(b => ({
         time: new Date(b.created_at),
@@ -345,6 +348,19 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
         isEntry: true,
         method: 'cash' as string,
       })),
+      ...sessionReceipts.map((r: any) => {
+        // Find player name from buyIns or use player_id
+        const playerBuyIn = buyIns.find(b => b.player_id === r.player_id);
+        const playerName = playerBuyIn?.player?.name || 'Jogador';
+        return {
+          time: new Date(r.created_at),
+          type: 'Quitação',
+          name: playerName,
+          amount: Number(r.amount),
+          isEntry: true,
+          method: r.payment_method,
+        };
+      }),
     ].sort((a, b) => a.time.getTime() - b.time.getTime());
 
     allMovements.forEach(mov => {
