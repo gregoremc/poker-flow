@@ -1,12 +1,19 @@
 import jsPDF from 'jspdf';
-import { formatCurrency } from '@/lib/format';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
+ * Format amount as "X Fichas" instead of R$ for thermal receipts
+ */
+function formatChips(amount: number): string {
+  return `${amount.toLocaleString('pt-BR')} Fichas`;
+}
+
+/**
  * Generates a thermal receipt PDF (80mm width) for a fiado (credit) entry.
  * Shows cumulative balance for the player.
+ * Uses "Fichas" instead of "R$" and "Fiado"
  */
 export async function generateFiadoReceipt({
   playerName,
@@ -76,8 +83,8 @@ export async function generateFiadoReceipt({
   // Current debt
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('Valor do Fiado:', 5, y);
-  doc.text(formatCurrency(amount), w - 5, y, { align: 'right' });
+  doc.text('Valor:', 5, y);
+  doc.text(formatChips(amount), w - 5, y, { align: 'right' });
   y += 8;
 
   // Cumulative balance
@@ -86,7 +93,7 @@ export async function generateFiadoReceipt({
   doc.text('SALDO DEVEDOR TOTAL:', w / 2, y, { align: 'center' });
   y += 7;
   doc.setFontSize(14);
-  doc.text(formatCurrency(cumulativeBalance), w / 2, y, { align: 'center' });
+  doc.text(formatChips(cumulativeBalance), w / 2, y, { align: 'center' });
   y += 8;
 
   // Separator
@@ -113,5 +120,5 @@ export async function generateFiadoReceipt({
 
   // Download
   const safeName = playerName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-  doc.save(`fiado-${safeName}-${format(new Date(), 'yyyyMMdd-HHmm')}.pdf`);
+  doc.save(`debito-${safeName}-${format(new Date(), 'yyyyMMdd-HHmm')}.pdf`);
 }

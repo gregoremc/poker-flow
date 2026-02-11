@@ -7,12 +7,12 @@ import { Header } from '@/components/poker/Header';
 import { BottomNav } from '@/components/poker/BottomNav';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, Check, DollarSign, Loader2, User, Wallet } from 'lucide-react';
+import { CurrencyInput } from '@/components/poker/CurrencyInput';
+import { AlertCircle, Check, DollarSign, Loader2, User, Wallet, CreditCard } from 'lucide-react';
 import { formatCurrency, formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -40,7 +40,7 @@ interface CreditByPlayer {
 
 export default function Receivables() {
   const today = new Date().toISOString().split('T')[0];
-  const { credits, isLoading, receivePayment, isReceiving } = useCreditRecords();
+  const { credits, paymentReceipts, isLoading, receivePayment, isReceiving } = useCreditRecords();
   const { players } = usePlayers();
   const { session } = useCashSession(today);
 
@@ -48,32 +48,36 @@ export default function Receivables() {
   const [paymentAmount, setPaymentAmount] = useState<number | ''>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
 
-  // Group credits by player
+  // Group credits by player - only show players with unpaid credits
   const creditsByPlayer: CreditByPlayer[] = players
     .map((player) => {
       const playerCredits = credits.filter((c) => c.player_id === player.id);
       const unpaidCredits = playerCredits.filter((c) => !c.is_paid);
-      const paidCredits = playerCredits.filter((c) => c.is_paid);
       
       return {
         playerId: player.id,
         playerName: player.name,
         credits: playerCredits,
         totalUnpaid: unpaidCredits.reduce((sum, c) => sum + Number(c.amount), 0),
-        totalPaid: paidCredits.reduce((sum, c) => sum + Number(c.amount), 0),
+        totalPaid: 0,
       };
     })
-    .filter((p) => p.totalUnpaid > 0 || p.credits.length > 0)
+    .filter((p) => p.totalUnpaid > 0)
     .sort((a, b) => b.totalUnpaid - a.totalUnpaid);
 
   const totalReceivables = creditsByPlayer.reduce((sum, p) => sum + p.totalUnpaid, 0);
 
   const selectedPlayer = creditsByPlayer.find((p) => p.playerId === showPayModal);
 
+  // Get partial payment log for a specific credit
+  const getPaymentsForCredit = (creditId: string) => {
+    return paymentReceipts.filter(r => r.credit_record_id === creditId);
+  };
+
   const handleReceivePayment = async () => {
     if (!showPayModal || !paymentAmount || paymentAmount <= 0) return;
 
-    // Find unpaid credits for this player and mark them as paid
+    // Find unpaid credits for this player and pay sequentially
     const unpaidCredits = credits.filter(
       (c) => c.player_id === showPayModal && !c.is_paid
     );
@@ -83,14 +87,15 @@ export default function Receivables() {
       if (remainingAmount <= 0) break;
       
       const creditAmount = Number(credit.amount);
-      if (remainingAmount >= creditAmount) {
-        await receivePayment({
-          creditId: credit.id,
-          paymentMethod,
-          sessionId: session?.id,
-        });
-        remainingAmount -= creditAmount;
-      }
+      const payThis = Math.min(remainingAmount, creditAmount);
+      
+      await receivePayment({
+        creditId: credit.id,
+        paymentMethod,
+        sessionId: session?.id,
+        amount: payThis,
+      });
+      remainingAmount -= payThis;
     }
 
     setPaymentAmount('');
@@ -169,52 +174,51 @@ export default function Receivables() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {/* Unpaid credits */}
+                  {/* Unpaid credits with partial payment log */}
                   {playerData.credits
                     .filter((c) => !c.is_paid)
-                    .map((credit) => (
-                      <div
-                        key={credit.id}
-                        className="flex items-center justify-between py-2 px-3 rounded-lg bg-orange-500/10 border border-orange-500/20"
-                      >
-                        <div className="flex items-center gap-3">
-                          <AlertCircle className="h-4 w-4 text-orange-500" />
-                          <span className="money-value text-orange-500">
-                            {formatCurrency(credit.amount)}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDateTime(credit.created_at)}
-                          </span>
+                    .map((credit) => {
+                      const partialPayments = getPaymentsForCredit(credit.id);
+                      return (
+                        <div key={credit.id} className="space-y-1">
+                          <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                            <div className="flex items-center gap-3">
+                              <AlertCircle className="h-4 w-4 text-orange-500" />
+                              <span className="money-value text-orange-500">
+                                {formatCurrency(credit.amount)}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {formatDateTime(credit.created_at)}
+                              </span>
+                            </div>
+                            <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/30">
+                              Pendente
+                            </Badge>
+                          </div>
+                          {/* Partial payment log - blue style */}
+                          {partialPayments.length > 0 && (
+                            <div className="ml-6 space-y-1">
+                              {partialPayments.map((receipt) => (
+                                <div
+                                  key={receipt.id}
+                                  className="flex items-center justify-between py-1.5 px-3 rounded-md bg-blue-500/10 border border-blue-500/20 text-xs"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <CreditCard className="h-3 w-3 text-blue-500" />
+                                    <span className="text-blue-500 font-medium">
+                                      Abatimento: {formatCurrency(Number(receipt.amount))}
+                                    </span>
+                                  </div>
+                                  <span className="text-muted-foreground">
+                                    {formatDateTime(receipt.created_at)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/30">
-                          Pendente
-                        </Badge>
-                      </div>
-                    ))}
-
-                  {/* Paid credits */}
-                  {playerData.credits
-                    .filter((c) => c.is_paid)
-                    .slice(0, 3)
-                    .map((credit) => (
-                      <div
-                        key={credit.id}
-                        className="flex items-center justify-between py-2 px-3 rounded-lg bg-success/10 border border-success/20"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Check className="h-4 w-4 text-success" />
-                          <span className="money-value text-success line-through opacity-60">
-                            {formatCurrency(credit.amount)}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            Pago em {credit.paid_at ? formatDateTime(credit.paid_at) : '-'}
-                          </span>
-                        </div>
-                        <Badge variant="outline" className="bg-success/10 text-success border-success/30">
-                          Pago
-                        </Badge>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                   {/* Receive Payment Button */}
                   {playerData.totalUnpaid > 0 && (
@@ -261,13 +265,13 @@ export default function Receivables() {
             
             <div className="space-y-2">
               <Label>Valor do Pagamento</Label>
-              <Input
-                type="number"
+              <CurrencyInput
                 value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value ? Number(e.target.value) : '')}
-                placeholder="0"
-                className="text-2xl font-mono font-bold text-center bg-input border-border"
+                onChange={setPaymentAmount}
               />
+              <p className="text-xs text-muted-foreground">
+                Pode ser parcial. A dívida será abatida proporcionalmente.
+              </p>
             </div>
 
             <div className="space-y-2">
