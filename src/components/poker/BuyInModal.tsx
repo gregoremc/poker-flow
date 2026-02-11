@@ -164,7 +164,7 @@ export function BuyInModal({ open, onClose, tableId, sessionId }: BuyInModalProp
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-full p-0 bg-popover border-border" align="start">
+                <PopoverContent className="w-full p-0 bg-popover border-border z-50" align="start" style={{ maxHeight: '300px' }}>
                   <Command className="bg-popover">
                     <CommandInput 
                       placeholder="Digite o nome..." 
@@ -172,7 +172,7 @@ export function BuyInModal({ open, onClose, tableId, sessionId }: BuyInModalProp
                       onValueChange={setPlayerSearch}
                       className="touch-target"
                     />
-                    <CommandList className="max-h-60">
+                    <CommandList className="max-h-[200px] overflow-y-auto">
                       <CommandEmpty>
                         {canCreateNewPlayer ? (
                           <Button
