@@ -164,15 +164,16 @@ export function BuyInModal({ open, onClose, tableId, sessionId }: BuyInModalProp
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-full p-0 bg-popover border-border z-50" align="start" style={{ maxHeight: '300px' }}>
-                  <Command className="bg-popover">
+                <PopoverContent className="w-full p-0 bg-popover border-border z-50" align="start" sideOffset={4}>
+                  <Command className="bg-popover" shouldFilter={false}>
                     <CommandInput 
                       placeholder="Digite o nome..." 
                       value={playerSearch}
                       onValueChange={setPlayerSearch}
                       className="touch-target"
                     />
-                    <CommandList className="max-h-[200px] overflow-y-auto">
+                    <div className="max-h-[200px] overflow-y-auto overscroll-contain" onWheel={(e) => e.stopPropagation()}>
+                    <CommandList className="max-h-none overflow-visible">
                       <CommandEmpty>
                         {canCreateNewPlayer ? (
                           <Button
@@ -216,6 +217,7 @@ export function BuyInModal({ open, onClose, tableId, sessionId }: BuyInModalProp
                         )}
                       </CommandGroup>
                     </CommandList>
+                    </div>
                   </Command>
                 </PopoverContent>
               </Popover>
