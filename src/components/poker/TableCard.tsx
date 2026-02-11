@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Table } from '@/types/poker';
 import { useTables } from '@/hooks/useTables';
 import { useTableTotal, useActiveSessions } from '@/hooks/useTransactions';
+import { useCashSession } from '@/hooks/useCashSession';
 import { PlayerDetailModal } from '@/components/poker/PlayerDetailModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Plus, Users, ArrowUpRight, Power, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
+import { toast } from 'sonner';
 
 interface TableCardProps {
   table: Table;
@@ -20,6 +22,8 @@ export function TableCard({ table, onBuyIn, onCashOut }: TableCardProps) {
   const { toggleTable, deleteTable } = useTables();
   const totalBuyIns = useTableTotal(table.id);
   const { sessions: activeSessions } = useActiveSessions(table.id);
+  const today = new Date().toISOString().split('T')[0];
+  const { isSessionOpen } = useCashSession(today);
   const playerCount = activeSessions.length;
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<{ id: string; name: string } | null>(null);
@@ -27,6 +31,15 @@ export function TableCard({ table, onBuyIn, onCashOut }: TableCardProps) {
   const handleDelete = () => {
     deleteTable(table.id);
     setDeleteConfirm(false);
+  };
+
+  const handleToggle = () => {
+    // Block reactivating table if cash is closed
+    if (!table.is_active && !isSessionOpen) {
+      toast.error('Caixa Fechado. Abra o caixa para operar as mesas.');
+      return;
+    }
+    toggleTable({ id: table.id, is_active: !table.is_active });
   };
 
   return (
@@ -52,7 +65,7 @@ export function TableCard({ table, onBuyIn, onCashOut }: TableCardProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => toggleTable({ id: table.id, is_active: !table.is_active })}
+                onClick={handleToggle}
                 className="h-8 w-8"
               >
                 <Power className={`h-4 w-4 ${table.is_active ? 'text-primary' : 'text-muted-foreground'}`} />

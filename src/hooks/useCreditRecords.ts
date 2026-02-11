@@ -14,6 +14,7 @@ export function useCreditRecords() {
     queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
     queryClient.invalidateQueries({ queryKey: ['buy-ins'] });
     queryClient.invalidateQueries({ queryKey: ['cash-session'] });
+    queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
   };
 
   // Get all credit records (both paid and unpaid for history)
@@ -30,6 +31,20 @@ export function useCreditRecords() {
 
       if (error) throw error;
       return data as CreditRecord[];
+    },
+  });
+
+  // Get payment receipts for a credit record (partial payments log)
+  const { data: paymentReceipts = [] } = useQuery({
+    queryKey: ['payment-receipts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_receipts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -68,17 +83,19 @@ export function useCreditRecords() {
     },
   });
 
-  // Receive payment - marks credit as paid and creates a payment receipt
-  // This creates an "entry" in the current cash session
+  // Receive partial or full payment
+  // Handles fractional payments: only marks as paid when remainder reaches 0
   const receivePaymentMutation = useMutation({
     mutationFn: async ({ 
       creditId, 
       paymentMethod, 
-      sessionId 
+      sessionId,
+      amount,
     }: { 
       creditId: string; 
       paymentMethod: PaymentMethod;
       sessionId?: string;
+      amount?: number; // if not provided, pays full amount
     }) => {
       // Get the credit record first
       const { data: credit, error: creditError } = await supabase
@@ -89,29 +106,61 @@ export function useCreditRecords() {
 
       if (creditError) throw creditError;
 
+      const payAmount = amount ?? credit.amount;
+      const remaining = Number(credit.amount) - payAmount;
+
       // Create payment receipt (this is the "entry" in the cash)
       const { error: receiptError } = await supabase
         .from('payment_receipts')
         .insert([{
           credit_record_id: creditId,
           player_id: credit.player_id,
-          amount: credit.amount,
+          amount: payAmount,
           payment_method: paymentMethod,
           session_id: sessionId,
         }]);
 
       if (receiptError) throw receiptError;
 
-      // Mark credit as paid (trigger will update player's credit_balance)
-      const { data, error } = await supabase
-        .from('credit_records')
-        .update({ is_paid: true, paid_at: new Date().toISOString() })
-        .eq('id', creditId)
-        .select()
-        .single();
+      if (remaining <= 0) {
+        // Fully paid - mark as paid (trigger will handle credit_balance reduction)
+        const { data, error } = await supabase
+          .from('credit_records')
+          .update({ 
+            is_paid: true, 
+            paid_at: new Date().toISOString(),
+          })
+          .eq('id', creditId)
+          .select()
+          .single();
 
-      if (error) throw error;
-      return data as CreditRecord;
+        if (error) throw error;
+        return data as CreditRecord;
+      } else {
+        // Partial payment - reduce original amount and manually adjust credit_balance
+        const { data: player } = await supabase
+          .from('players')
+          .select('credit_balance')
+          .eq('id', credit.player_id)
+          .single();
+
+        if (player) {
+          await supabase
+            .from('players')
+            .update({ credit_balance: Math.max(0, Number(player.credit_balance) - payAmount) })
+            .eq('id', credit.player_id);
+        }
+
+        const { data, error } = await supabase
+          .from('credit_records')
+          .update({ amount: remaining })
+          .eq('id', creditId)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data as CreditRecord;
+      }
     },
     onSuccess: () => {
       invalidateAllQueries();
@@ -130,6 +179,7 @@ export function useCreditRecords() {
   return {
     credits,
     unpaidCredits,
+    paymentReceipts,
     isLoading,
     getPlayerCredits,
     markAsPaid: markAsPaid.mutate,

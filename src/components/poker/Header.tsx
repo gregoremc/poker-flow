@@ -19,10 +19,10 @@ export function Header() {
                 <img 
                   src={settings.logo_url} 
                   alt="Logo" 
-                  className="h-6 w-6 object-contain"
+                  className="h-10 w-10 object-contain"
                 />
               ) : (
-                <Spade className="h-6 w-6 text-primary" />
+                <Spade className="h-10 w-10 text-primary" />
               )}
             </div>
             <div>

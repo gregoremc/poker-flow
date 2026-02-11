@@ -9,6 +9,7 @@ import { CashOutModal } from '@/components/poker/CashOutModal';
 import { AddTableModal } from '@/components/poker/AddTableModal';
 import { Button } from '@/components/ui/button';
 import { Plus, Loader2, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Index() {
   const today = new Date().toISOString().split('T')[0];
@@ -55,7 +56,13 @@ export default function Index() {
             )}
           </div>
           <Button
-            onClick={() => setShowAddTable(true)}
+            onClick={() => {
+              if (!isSessionOpen) {
+                toast.error('Caixa Fechado. Abra o caixa para operar as mesas.');
+                return;
+              }
+              setShowAddTable(true);
+            }}
             size="sm"
             className="bg-primary hover:bg-primary/90"
             disabled={!isSessionOpen}

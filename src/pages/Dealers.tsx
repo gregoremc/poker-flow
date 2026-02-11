@@ -54,12 +54,12 @@ export default function Dealers() {
   };
 
   const handleAddTip = () => {
-    if (!showTipModal || !tipAmount || tipAmount <= 0) return;
+    if (!showTipModal || !tipAmount || tipAmount <= 0 || !tipTableId) return;
     addTip({ 
       dealer_id: showTipModal, 
       amount: Number(tipAmount), 
       session_id: session?.id,
-      table_id: tipTableId || undefined,
+      table_id: tipTableId,
     });
     setTipAmount('');
     setTipTableId('');
@@ -268,7 +268,7 @@ export default function Dealers() {
           </div>
           <Button
             onClick={handleAddTip}
-            disabled={!tipAmount || Number(tipAmount) <= 0}
+            disabled={!tipAmount || Number(tipAmount) <= 0 || !tipTableId}
             className="w-full touch-target bg-gold text-gold-foreground hover:bg-gold/90"
           >
             <DollarSign className="mr-2 h-5 w-5" />
