@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +24,10 @@ export function CurrencyInput({
   const [displayValue, setDisplayValue] = useState(
     value ? formatForDisplay(Number(value)) : ''
   );
+
+  useEffect(() => {
+    setDisplayValue(value ? formatForDisplay(Number(value)) : '');
+  }, [value]);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
