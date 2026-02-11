@@ -185,8 +185,8 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
     if (dailySummary.totalBonuses > 0) {
       addLine('Bônus Concedidos:', formatCurrency(dailySummary.totalBonuses));
     }
-    if (dailySummary.totalCredits > 0) {
-      addLine('Fiado (Não Recebido):', formatCurrency(dailySummary.totalCredits));
+    if (totalCredits > 0) {
+      addLine('Fiado (Não Recebido):', formatCurrency(totalCredits));
     }
     
     doc.setFont('helvetica', 'bold');
@@ -473,13 +473,13 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
                         <span className="text-purple-500">-{formatCurrency(dailySummary.totalBonuses)}</span>
                       </div>
                     )}
-                    {dailySummary.totalCredits > 0 && (
+                    {totalCredits > 0 && (
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
                           <AlertCircle className="h-3 w-3 text-orange-500" />
                           <span className="text-muted-foreground">Fiado (não recebido)</span>
                         </div>
-                        <span className="text-orange-500">-{formatCurrency(dailySummary.totalCredits)}</span>
+                        <span className="text-orange-500">-{formatCurrency(totalCredits)}</span>
                       </div>
                     )}
                     <div className="flex items-center justify-between">
