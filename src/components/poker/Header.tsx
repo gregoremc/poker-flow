@@ -10,12 +10,13 @@ import { toast } from '@/hooks/use-toast';
 
 export function Header() {
   const { settings } = useClubSettings();
-  const { organizationName, isAdmin } = useOrganization();
+  const { organizationName, organization, isAdmin } = useOrganization();
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const today = formatDate(new Date());
 
   const displayName = organizationName || settings?.club_name || 'Poker Club';
+  const logoUrl = organization?.logo_url || settings?.logo_url;
 
   const handleLogout = async () => {
     await signOut();
@@ -24,15 +25,15 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border safe-area-top">
+    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border safe-area-top print:hidden">
       <div className="container py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
-              {settings?.logo_url ? (
-                <img src={settings.logo_url} alt="Logo" className="h-10 w-10 object-contain" />
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="h-12 w-12 object-contain" />
               ) : (
-                <Spade className="h-10 w-10 text-primary" />
+                <Spade className="h-12 w-12 text-primary" />
               )}
             </div>
             <div>

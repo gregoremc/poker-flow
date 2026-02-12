@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useClubSettings } from '@/hooks/useClubSettings';
+import { useOrganization } from '@/hooks/useOrganization';
 import { Header } from '@/components/poker/Header';
 import { BottomNav } from '@/components/poker/BottomNav';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,21 +9,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Upload, Save, Loader2, Spade } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Settings() {
   const { settings, isLoading, updateSettings, isUpdating, uploadLogo } = useClubSettings();
+  const { organization, organizationId } = useOrganization();
   const [clubName, setClubName] = useState('');
-  
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize form when settings load
-  useState(() => {
+  const logoUrl = organization?.logo_url || settings?.logo_url;
+
+  useEffect(() => {
     if (settings) {
       setClubName(settings.club_name);
-      
     }
-  });
+  }, [settings]);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -35,9 +37,41 @@ export default function Settings() {
 
     setUploading(true);
     try {
-      const logoUrl = await uploadLogo(file);
-      if (logoUrl) {
-        updateSettings({ logo_url: logoUrl });
+      // Upload to storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `logo-${Date.now()}.${fileExt}`;
+      const filePath = `logos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('club-assets')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) {
+        toast.error('Erro ao fazer upload da logo');
+        console.error(uploadError);
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('club-assets')
+        .getPublicUrl(filePath);
+
+      // Save to organizations table
+      if (organizationId) {
+        const { error } = await supabase
+          .from('organizations')
+          .update({ logo_url: publicUrl })
+          .eq('id', organizationId);
+        
+        if (error) {
+          console.error('Org update error:', error);
+          // Fallback to club_settings
+          updateSettings({ logo_url: publicUrl });
+        } else {
+          toast.success('Logo atualizada!');
+        }
+      } else {
+        updateSettings({ logo_url: publicUrl });
       }
     } finally {
       setUploading(false);
@@ -49,10 +83,7 @@ export default function Settings() {
       toast.error('O nome do clube não pode estar vazio');
       return;
     }
-
-    updateSettings({ 
-      club_name: clubName.trim(),
-    });
+    updateSettings({ club_name: clubName.trim() });
   };
 
   if (isLoading) {
@@ -70,7 +101,6 @@ export default function Settings() {
       <main className="container py-6 space-y-6">
         <h2 className="text-2xl font-bold">Configurações</h2>
 
-        {/* Club Identity */}
         <Card className="card-glow">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -83,15 +113,11 @@ export default function Settings() {
             <div className="space-y-3">
               <Label>Logo do Clube</Label>
               <div className="flex items-center gap-4">
-                <div className="h-20 w-20 rounded-lg bg-input border border-border flex items-center justify-center overflow-hidden">
-                  {settings?.logo_url ? (
-                    <img 
-                      src={settings.logo_url} 
-                      alt="Logo" 
-                      className="h-full w-full object-cover"
-                    />
+                <div className="h-24 w-24 rounded-lg bg-input border border-border flex items-center justify-center overflow-hidden">
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="Logo" className="h-full w-full object-cover" />
                   ) : (
-                    <Spade className="h-8 w-8 text-muted-foreground" />
+                    <Spade className="h-10 w-10 text-muted-foreground" />
                   )}
                 </div>
                 <div className="flex flex-col gap-2">
@@ -116,7 +142,7 @@ export default function Settings() {
                     {uploading ? 'Enviando...' : 'Upload Logo'}
                   </Button>
                   <p className="text-xs text-muted-foreground">
-                    PNG, JPG ou SVG. Máximo 2MB.
+                    PNG, JPG ou SVG. Máximo 2MB. Exibida no cabeçalho e recibos.
                   </p>
                 </div>
               </div>
@@ -138,7 +164,6 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        {/* Save Button */}
         <Button
           onClick={handleSave}
           disabled={isUpdating}
