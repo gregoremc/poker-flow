@@ -14,6 +14,7 @@ import Rake from "./pages/Rake";
 import Receivables from "./pages/Receivables";
 import Players from "./pages/Players";
 import Login from "./pages/Login";
+import MasterAdmin from "./pages/MasterAdmin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/receber" element={<ProtectedRoute><Receivables /></ProtectedRoute>} />
             <Route path="/jogadores" element={<ProtectedRoute><Players /></ProtectedRoute>} />
             <Route path="/configuracoes" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/master" element={<ProtectedRoute><MasterAdmin /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </HashRouter>
