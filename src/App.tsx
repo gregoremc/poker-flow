@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import Dashboard from "./pages/Dashboard";
 import Index from "./pages/Index";
 import CashControl from "./pages/CashControl";
 import History from "./pages/History";
@@ -28,7 +29,8 @@ const App = () => (
         <HashRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/mesas" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/caixa" element={<ProtectedRoute><CashControl /></ProtectedRoute>} />
             <Route path="/historico" element={<ProtectedRoute><History /></ProtectedRoute>} />
             <Route path="/dealers" element={<ProtectedRoute><Dealers /></ProtectedRoute>} />
