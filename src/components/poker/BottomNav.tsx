@@ -1,9 +1,10 @@
 import { useLocation, Link } from 'react-router-dom';
-import { LayoutGrid, Wallet, Clock, Users, Percent, AlertCircle, UserCircle } from 'lucide-react';
+import { LayoutGrid, Wallet, Clock, Users, Percent, AlertCircle, UserCircle, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
-  { path: '/', label: 'Mesas', icon: LayoutGrid },
+  { path: '/', label: 'Dashboard', icon: BarChart3 },
+  { path: '/mesas', label: 'Mesas', icon: LayoutGrid },
   { path: '/caixa', label: 'Caixa', icon: Wallet },
   { path: '/jogadores', label: 'Jogadores', icon: UserCircle },
   { path: '/rake', label: 'Rake', icon: Percent },
