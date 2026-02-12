@@ -425,3 +425,14 @@
     padding-top: env(safe-area-inset-top, 16px);
   }
 }
+
+/* Print styles - hide everything except receipt content */
+@media print {
+  header, nav, .print\\:hidden, button, [role="navigation"] {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
