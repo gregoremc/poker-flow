@@ -78,25 +78,38 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
 
   // ============ SEÇÃO 2: FLUXO DE CAIXA ============
   // Entradas Reais: only buy-ins paid immediately (cash, pix, debit, credit) - exclude fiado and bonus
-  const entradasReais = buyIns
+  const entradasReaisBuyIns = buyIns
     .filter(b => !b.is_bonus && b.payment_method !== 'bonus' && b.payment_method !== 'credit_fiado')
     .reduce((sum, b) => sum + Number(b.amount), 0);
 
-  // Recebimento de Fiados Antigos: payment_receipts linked to this session
+  // Payment receipts linked to this session
   const sessionReceipts = paymentReceipts.filter((r: any) => r.session_id === session.id);
-  const recebimentoFiados = sessionReceipts.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
 
-  // Saídas Reais (Cash-outs): total effectively paid to players
-  const saidasReais = totalSaidas;
+  // Recebimento de Fiados via meio de pagamento real (página "A Receber") - exclui abatimento no cash-out (fichas)
+  const recebimentoFiadosReal = sessionReceipts
+    .filter((r: any) => r.payment_method !== 'fichas')
+    .reduce((sum: number, r: any) => sum + Number(r.amount), 0);
+
+  // Abatimento de fiado no cash-out (fichas) - não entra dinheiro, mas reduz a saída física
+  const abatimentoCashout = sessionReceipts
+    .filter((r: any) => r.payment_method === 'fichas')
+    .reduce((sum: number, r: any) => sum + Number(r.amount), 0);
+
+  // Entradas Reais = Buy-ins pagos + Quitações reais de fiado
+  const entradasReais = entradasReaisBuyIns + recebimentoFiadosReal;
+
+  // Saídas Reais: total cash-outs MENOS abatimentos de fiado (pois não houve pagamento físico)
+  const saidasReais = totalSaidas - abatimentoCashout;
 
   // Pagamento Dealers
   const pagamentoDealers = totalPayouts;
 
   // SALDO FINAL DO CAIXA
-  const saldoFinalCaixa = (entradasReais + recebimentoFiados) - (saidasReais + pagamentoDealers);
+  const saldoFinalCaixa = entradasReais - (saidasReais + pagamentoDealers);
 
-  // ============ SEÇÃO 3: RESUMO ============
+  // ============ SEÇÃO 3: OBSERVAÇÕES ============
   const fiadosGerados = dailySummary.totalCredits; // New fiados created this session
+  const fiadoPendente = Math.max(0, fiadosGerados - abatimentoCashout); // Fiados still unpaid
   const totalBonus = dailySummary.totalBonuses;
 
   // Format dates
@@ -162,43 +175,58 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
     }
   }
 
-  // ============ GENERATE 80mm THERMAL PDF ============
+  // ============ GENERATE A4 PDF ============
   const generatePDF = async () => {
-    const w = 80;
-    // Estimate height dynamically
-    const estimatedHeight = 600;
-    const doc = new jsPDF({ unit: 'mm', format: [w, estimatedHeight] });
-    let y = 6;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const w = 210;
+    const margin = 15;
+    const contentW = w - margin * 2;
+    let y = 15;
 
     const addDashedLine = () => {
-      doc.setDrawColor(0);
-      doc.setLineDashPattern([1, 1], 0);
-      doc.line(3, y, w - 3, y);
-      y += 4;
+      doc.setDrawColor(180);
+      doc.setLineDashPattern([2, 2], 0);
+      doc.line(margin, y, w - margin, y);
+      y += 6;
     };
 
     const addSectionTitle = (title: string) => {
-      doc.setFontSize(10);
+      doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
-      doc.text(title, w / 2, y, { align: 'center' });
-      y += 5;
-      addDashedLine();
+      doc.setTextColor(0);
+      doc.text(title, margin, y);
+      y += 2;
+      doc.setDrawColor(0);
+      doc.setLineDashPattern([], 0);
+      doc.line(margin, y, w - margin, y);
+      y += 6;
     };
 
     const addRow = (label: string, value: string, bold = false) => {
-      doc.setFontSize(8);
+      doc.setFontSize(10);
       doc.setFont('helvetica', bold ? 'bold' : 'normal');
-      doc.text(label, 4, y);
-      doc.text(value, w - 4, y, { align: 'right' });
+      doc.setTextColor(0);
+      doc.text(label, margin + 2, y);
+      doc.text(value, w - margin, y, { align: 'right' });
+      y += 6;
+    };
+
+    const addSubRow = (label: string, value: string) => {
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      doc.text(label, margin + 8, y);
+      doc.text(value, w - margin, y, { align: 'right' });
       y += 5;
     };
 
     const addRowBig = (label: string, value: string) => {
-      doc.setFontSize(10);
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text(label, 4, y);
-      doc.text(value, w - 4, y, { align: 'right' });
-      y += 6;
+      doc.setTextColor(0);
+      doc.text(label, margin + 2, y);
+      doc.text(value, w - margin, y, { align: 'right' });
+      y += 8;
     };
 
     // ===== LOGO =====
@@ -206,44 +234,43 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
       const logoBase64 = await loadLogoBase64(logoUrl);
       if (logoBase64) {
         try {
-          const logoSize = 16;
+          const logoSize = 22;
           doc.addImage(logoBase64, 'PNG', (w - logoSize) / 2, y, logoSize, logoSize);
-          y += logoSize + 2;
+          y += logoSize + 4;
         } catch { /* ignore logo errors */ }
       }
     }
 
     // ===== HEADER =====
-    doc.setFontSize(11);
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text(clubName, w / 2, y, { align: 'center' });
-    y += 5;
+    y += 7;
 
-    doc.setFontSize(9);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text('RELATÓRIO DE FECHAMENTO', w / 2, y, { align: 'center' });
-    y += 5;
+    doc.text('RELATÓRIO DE FECHAMENTO DE CAIXA', w / 2, y, { align: 'center' });
+    y += 7;
 
-    doc.setFontSize(8);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text(session.name, w / 2, y, { align: 'center' });
-    y += 4;
+    y += 6;
 
     doc.setFont('helvetica', 'normal');
-    doc.text(`Abertura: ${openedAt}`, w / 2, y, { align: 'center' });
-    y += 4;
-    doc.text(`Fechamento: ${closedAt}`, w / 2, y, { align: 'center' });
-    y += 4;
+    doc.setFontSize(9);
+    doc.text(`Abertura: ${openedAt}  |  Fechamento: ${closedAt}`, w / 2, y, { align: 'center' });
+    y += 5;
     if (session.responsible) {
       doc.text(`Responsável: ${session.responsible}`, w / 2, y, { align: 'center' });
-      y += 4;
+      y += 5;
     }
-    y += 2;
+    y += 4;
 
     // ===== 1. FLUXO DE FICHAS =====
-    addSectionTitle('1. FLUXO DE FICHAS');
+    addSectionTitle('1. FLUXO DE FICHAS (Operacional)');
 
-    addRow('Total de Entradas (Buy-ins):', formatChips(totalEntradas));
+    addRow('Total de Entradas (Buy-ins)', formatChips(totalEntradas));
     // Breakdown by method
     const methodBreakdown = buyIns.reduce((acc, b) => {
       const key = b.is_bonus ? 'bonus' : b.payment_method;
@@ -255,93 +282,83 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
       credit_fiado: 'Fiado', bonus: 'Bônus', fichas: 'Fichas',
     };
     Object.entries(methodBreakdown).forEach(([m, v]) => {
-      doc.setFontSize(7);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`  ${methodLabels[m] || m}:`, 6, y);
-      doc.text(formatChips(v), w - 4, y, { align: 'right' });
-      y += 4;
+      addSubRow(`${methodLabels[m] || m}:`, formatChips(v));
     });
 
-    addRow('Caixinha dos Dealers:', formatChips(totalCaixinha));
-    addRow('Total de Saídas (Cash-outs):', formatChips(totalSaidas));
+    addRow('Caixinha dos Dealers', `-${formatChips(totalCaixinha)}`);
+    addRow('Total de Saídas (Cash-outs)', `-${formatChips(totalSaidas)}`);
     y += 2;
-    addRowBig('Rake Calculado:', formatChips(rakeCalculado));
-    addRow('Rake Registrado (conf.):', formatChips(rakeRegistrado));
+    addRowBig('Rake Calculado', formatChips(rakeCalculado));
+    addRow('Rake Registrado (conferência)', formatChips(rakeRegistrado));
 
     if (rakeByTable.length > 0) {
       rakeByTable.forEach((rt) => {
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`  ${rt.tableName}:`, 6, y);
-        doc.text(formatChips(rt.total), w - 4, y, { align: 'right' });
-        y += 4;
+        addSubRow(`${rt.tableName}:`, formatChips(rt.total));
       });
     }
-    y += 2;
+    y += 4;
 
     // ===== 2. FLUXO DE CAIXA =====
-    addSectionTitle('2. FLUXO DE CAIXA (R$)');
+    addSectionTitle('2. FLUXO DE CAIXA (Financeiro)');
 
-    addRow('Entradas Reais (Buy-ins):', formatCurrency(entradasReais));
-    addRow('Recebimento Fiados:', formatCurrency(recebimentoFiados));
-    addRow('Saídas Reais (Cash-outs):', formatCurrency(saidasReais));
-    addRow('Pagamento Dealers:', formatCurrency(pagamentoDealers));
+    addRow('Entradas Reais (Buy-ins)', formatCurrency(entradasReaisBuyIns));
+    addRow('Recebimento de Fiados', formatCurrency(recebimentoFiadosReal));
+    addRow('Saídas Reais (Cash-outs)', `-${formatCurrency(saidasReais)}`);
+    addRow('Pagamento Dealers', `-${formatCurrency(pagamentoDealers)}`);
 
     // Dealer payout detail
     if (payouts.length > 0) {
       payouts.forEach((p: any) => {
         const dealerName = p.dealer?.name || 'Dealer';
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`  ${dealerName}:`, 6, y);
-        doc.text(formatCurrency(Number(p.amount)), w - 4, y, { align: 'right' });
-        y += 4;
+        addSubRow(`${dealerName}:`, `-${formatCurrency(Number(p.amount))}`);
       });
     }
 
     y += 2;
-    addDashedLine();
-    addRowBig('SALDO FINAL CAIXA:', formatCurrency(saldoFinalCaixa));
-    y += 2;
+    doc.setDrawColor(0);
+    doc.setLineDashPattern([], 0);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, w - margin, y);
+    doc.setLineWidth(0.2);
+    y += 6;
+    addRowBig('SALDO FINAL DO CAIXA', formatCurrency(saldoFinalCaixa));
+    y += 4;
 
-    // ===== 3. RESUMO E OBSERVAÇÕES =====
-    addSectionTitle('3. RESUMO');
+    // ===== OBSERVAÇÕES =====
+    addSectionTitle('Observações');
 
-    addRow('Fiados Gerados:', formatChips(fiadosGerados));
-    addRow('Total de Bônus:', formatChips(totalBonus));
-
-    if (cancelledBuyIns.length > 0) {
-      const totalCancelled = cancelledBuyIns.reduce((sum: number, cb: any) => sum + Number(cb.amount), 0);
-      addRow(`Buy-ins Cancelados (${cancelledBuyIns.length}):`, formatChips(totalCancelled));
-    }
+    addRow('Fiado Pendente do Caixa', formatChips(fiadoPendente));
 
     if (notes) {
       y += 2;
-      doc.setFontSize(8);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text('Observações:', 4, y);
-      y += 4;
+      doc.text('Notas:', margin + 2, y);
+      y += 6;
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      const splitNotes = doc.splitTextToSize(notes, w - 8);
-      doc.text(splitNotes, 4, y);
-      y += splitNotes.length * 3.5 + 2;
+      doc.setFontSize(9);
+      const splitNotes = doc.splitTextToSize(notes, contentW - 4);
+      doc.text(splitNotes, margin + 2, y);
+      y += splitNotes.length * 4.5 + 4;
     }
 
-    y += 2;
+    y += 4;
 
     // ===== EXTRATO DE MOVIMENTAÇÕES =====
-    addSectionTitle('EXTRATO DE MOVIMENTAÇÕES');
+    addSectionTitle('Extrato de Movimentações');
 
-    doc.setFontSize(6);
+    // Table header
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text('Hora', 4, y);
-    doc.text('Tipo', 18, y);
-    doc.text('Nome', 36, y);
-    doc.text('Valor', w - 4, y, { align: 'right' });
-    y += 1;
-    doc.line(3, y, w - 3, y);
-    y += 3;
+    doc.setTextColor(0);
+    doc.text('Hora', margin + 2, y);
+    doc.text('Tipo', margin + 25, y);
+    doc.text('Jogador', margin + 60, y);
+    doc.text('Valor', w - margin, y, { align: 'right' });
+    y += 2;
+    doc.setDrawColor(0);
+    doc.line(margin, y, w - margin, y);
+    y += 5;
 
     doc.setFont('helvetica', 'normal');
 
@@ -380,40 +397,48 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
     ].sort((a, b) => a.time.getTime() - b.time.getTime());
 
     allMovements.forEach(mov => {
-      doc.setFontSize(6);
-      doc.text(format(mov.time, 'HH:mm'), 4, y);
-      doc.text(mov.type, 18, y);
-      const truncName = mov.name.length > 12 ? mov.name.substring(0, 11) + '..' : mov.name;
-      doc.text(truncName, 36, y);
+      // Check if we need a new page
+      if (y > 270) {
+        doc.addPage();
+        y = 15;
+      }
+      doc.setFontSize(8);
+      doc.setTextColor(0);
+      doc.text(format(mov.time, 'HH:mm'), margin + 2, y);
+      doc.text(mov.type, margin + 25, y);
+      const truncName = mov.name.length > 20 ? mov.name.substring(0, 19) + '..' : mov.name;
+      doc.text(truncName, margin + 60, y);
       const prefix = mov.isEntry ? '+' : '-';
-      doc.text(`${prefix}${mov.amount.toLocaleString('pt-BR')}`, w - 4, y, { align: 'right' });
-      y += 4;
+      doc.text(`${prefix}${mov.amount.toLocaleString('pt-BR')}`, w - margin, y, { align: 'right' });
+      y += 5;
     });
 
-    y += 2;
-    doc.setFontSize(6);
+    y += 4;
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
-    doc.text(`Total: ${allMovements.length} movimentações`, 4, y);
-    y += 8;
+    doc.text(`Total: ${allMovements.length} movimentações`, margin + 2, y);
+    y += 12;
 
     // ===== ASSINATURA =====
-    addDashedLine();
-    doc.setFontSize(8);
+    if (y > 250) { doc.addPage(); y = 20; }
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text('Assinatura do Gerente:', 4, y);
-    y += 10;
+    doc.setTextColor(0);
+    doc.text('Assinatura do Gerente:', margin + 2, y);
+    y += 14;
     doc.setLineDashPattern([], 0);
-    doc.line(10, y, w - 10, y);
-    y += 4;
-    doc.setFontSize(6);
+    doc.setDrawColor(0);
+    doc.line(margin + 20, y, w - margin - 20, y);
+    y += 5;
+    doc.setFontSize(8);
     doc.text(session.responsible || 'Responsável', w / 2, y, { align: 'center' });
-    y += 6;
+    y += 10;
 
     // ===== FOOTER =====
-    doc.setFontSize(6);
+    doc.setFontSize(7);
     doc.setTextColor(128);
     doc.text('Documento gerado automaticamente', w / 2, y, { align: 'center' });
-    y += 3;
+    y += 4;
     doc.text(format(new Date(), "dd/MM/yyyy 'às' HH:mm"), w / 2, y, { align: 'center' });
 
     // Download
@@ -526,22 +551,22 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
 
                 <div className="flex items-center justify-between text-sm">
                   <span>Entradas Reais (Buy-ins)</span>
-                  <span className="money-value text-success">{formatCurrency(entradasReais)}</span>
+                  <span className="money-value text-success">{formatCurrency(entradasReaisBuyIns)}</span>
                 </div>
 
                 <div className="flex items-center justify-between text-sm">
                   <span>Recebimento Fiados</span>
-                  <span className="money-value text-success">{formatCurrency(recebimentoFiados)}</span>
+                  <span className="money-value text-success">{formatCurrency(recebimentoFiadosReal)}</span>
                 </div>
 
                 <div className="flex items-center justify-between text-sm">
                   <span>Saídas Reais (Cash-outs)</span>
-                  <span className="money-value text-destructive">{formatCurrency(saidasReais)}</span>
+                  <span className="money-value text-destructive">-{formatCurrency(saidasReais)}</span>
                 </div>
 
                 <div className="flex items-center justify-between text-sm">
                   <span>Pagamento Dealers</span>
-                  <span className="money-value text-destructive">{formatCurrency(pagamentoDealers)}</span>
+                  <span className="money-value text-destructive">-{formatCurrency(pagamentoDealers)}</span>
                 </div>
 
                 <div className="border-t-2 border-gold/50 pt-3 flex items-center justify-between bg-gold/5 -mx-4 px-4 pb-2 rounded-b-lg">
@@ -556,55 +581,21 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
               </CardContent>
             </Card>
 
-            {/* 3. RESUMO */}
+            {/* OBSERVAÇÕES */}
             <Card className="border-border">
               <CardContent className="pt-4 space-y-3">
                 <div className="flex items-center gap-2 mb-1">
                   <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-bold text-sm">3. RESUMO</span>
+                  <span className="font-bold text-sm">Observações</span>
                 </div>
 
-                {fiadosGerados > 0 && (
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <AlertCircle className="h-3 w-3 text-orange-500" />
-                      <span>Fiados Gerados</span>
-                    </div>
-                    <span className="text-orange-500">{formatChips(fiadosGerados)}</span>
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-3 w-3 text-warning" />
+                    <span>Fiado Pendente do Caixa</span>
                   </div>
-                )}
-
-                {totalBonus > 0 && (
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <Gift className="h-3 w-3 text-purple-500" />
-                      <span>Total de Bônus</span>
-                    </div>
-                    <span className="text-purple-500">{formatChips(totalBonus)}</span>
-                  </div>
-                )}
-
-                {cancelledBuyIns.length > 0 && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-destructive">Buy-ins Cancelados ({cancelledBuyIns.length})</span>
-                    <span className="text-destructive">
-                      {formatChips(cancelledBuyIns.reduce((sum: number, cb: any) => sum + Number(cb.amount), 0))}
-                    </span>
-                  </div>
-                )}
-
-                {/* Dealer tip breakdown */}
-                {Object.keys(dealerTipSummary).length > 0 && (
-                  <div className="border-t border-border pt-2 space-y-1">
-                    <span className="text-xs text-muted-foreground font-medium">Caixinhas por Dealer:</span>
-                    {Object.values(dealerTipSummary).map((d: any, i) => (
-                      <div key={i} className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>  {d.name}</span>
-                        <span>{formatChips(d.amount)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  <span className="text-warning">{formatChips(fiadoPendente)}</span>
+                </div>
               </CardContent>
             </Card>
 
