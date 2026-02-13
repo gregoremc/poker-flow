@@ -60,7 +60,7 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
     },
   });
 
-  const { paymentReceipts } = useCreditRecords();
+  const { credits, paymentReceipts } = useCreditRecords();
   const { settings } = useClubSettings();
   const { totalRake, rakeByTable } = useRake(dateStr, session.id);
   const { totalPayouts, payouts } = useDealerPayouts(dateStr, session.id);
@@ -85,7 +85,7 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
   // Payment receipts linked to this session
   const sessionReceipts = paymentReceipts.filter((r: any) => r.session_id === session.id);
 
-  // Recebimento de Fiados via meio de pagamento real (página "A Receber") - exclui abatimento no cash-out (fichas)
+  // Recebimento de Fiados via pagamento real na página "A Receber" (exclui abatimento em fichas no cash-out)
   const recebimentoFiadosReal = sessionReceipts
     .filter((r: any) => r.payment_method !== 'fichas')
     .reduce((sum: number, r: any) => sum + Number(r.amount), 0);
@@ -95,7 +95,7 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
     .filter((r: any) => r.payment_method === 'fichas')
     .reduce((sum: number, r: any) => sum + Number(r.amount), 0);
 
-  // Entradas Reais = Buy-ins pagos + Quitações reais de fiado
+  // Entradas Reais = Buy-ins pagos + Quitações reais de fiado (página A Receber)
   const entradasReais = entradasReaisBuyIns + recebimentoFiadosReal;
 
   // Saídas Reais: total cash-outs MENOS abatimentos de fiado (pois não houve pagamento físico)
@@ -109,9 +109,13 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
 
   // ============ SEÇÃO 3: OBSERVAÇÕES ============
   const fiadosGerados = dailySummary.totalCredits; // New fiados created this session
-  // Total de todas as quitações desta sessão (fichas + dinheiro real)
-  const totalQuitacoesSessao = sessionReceipts.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
-  const fiadoPendente = Math.max(0, fiadosGerados - totalQuitacoesSessao); // Fiados still unpaid
+  // Fiado Pendente: fiados DESTA sessão menos quitações DESSES fiados específicos
+  const sessionFiadoBuyInIds = buyIns.filter(b => b.payment_method === 'credit_fiado').map(b => b.id);
+  const sessionCreditRecordIds = credits.filter(c => c.buy_in_id && sessionFiadoBuyInIds.includes(c.buy_in_id)).map(c => c.id);
+  const quitacoesDossFiadosDessaSessao = paymentReceipts
+    .filter((r: any) => sessionCreditRecordIds.includes(r.credit_record_id))
+    .reduce((sum: number, r: any) => sum + Number(r.amount), 0);
+  const fiadoPendente = Math.max(0, fiadosGerados - quitacoesDossFiadosDessaSessao);
   const totalBonus = dailySummary.totalBonuses;
 
   // Format dates
@@ -304,8 +308,11 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
     // ===== 2. FLUXO DE CAIXA =====
     addSectionTitle('2. FLUXO DE CAIXA (Financeiro)');
 
-    addRow('Entradas Reais (Buy-ins)', formatCurrency(entradasReaisBuyIns));
-    addRow('Recebimento de Fiados', formatCurrency(recebimentoFiadosReal));
+    addRow('Entradas Reais', formatCurrency(entradasReais));
+    if (recebimentoFiadosReal > 0) {
+      addSubRow('Buy-ins pagos:', formatCurrency(entradasReaisBuyIns));
+      addSubRow('Quitações (A Receber):', formatCurrency(recebimentoFiadosReal));
+    }
     addRow('Saídas Reais (Cash-outs)', `-${formatCurrency(saidasReais)}`);
     addRow('Pagamento Dealers', `-${formatCurrency(pagamentoDealers)}`);
 
@@ -553,14 +560,21 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
                 </div>
 
                 <div className="flex items-center justify-between text-sm">
-                  <span>Entradas Reais (Buy-ins)</span>
-                  <span className="money-value text-success">{formatCurrency(entradasReaisBuyIns)}</span>
+                  <span>Entradas Reais</span>
+                  <span className="money-value text-success">{formatCurrency(entradasReais)}</span>
                 </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <span>Recebimento Fiados</span>
-                  <span className="money-value text-success">{formatCurrency(recebimentoFiadosReal)}</span>
-                </div>
+                {recebimentoFiadosReal > 0 && (
+                  <div className="ml-4 space-y-1">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Buy-ins pagos</span>
+                      <span>{formatCurrency(entradasReaisBuyIns)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Quitações (A Receber)</span>
+                      <span>{formatCurrency(recebimentoFiadosReal)}</span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between text-sm">
                   <span>Saídas Reais (Cash-outs)</span>
