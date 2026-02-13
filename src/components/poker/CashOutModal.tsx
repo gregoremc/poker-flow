@@ -107,7 +107,7 @@ export function CashOutModal({ open, onClose, tableId, sessionId }: CashOutModal
       const payThis = Math.min(remaining, Number(credit.amount));
       await receivePayment({
         creditId: credit.id,
-        paymentMethod: paymentMethod,
+        paymentMethod: 'fichas' as PaymentMethod,
         sessionId: session?.id,
         amount: payThis,
       });

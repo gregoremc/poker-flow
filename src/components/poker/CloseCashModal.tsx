@@ -109,7 +109,9 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
 
   // ============ SEÇÃO 3: OBSERVAÇÕES ============
   const fiadosGerados = dailySummary.totalCredits; // New fiados created this session
-  const fiadoPendente = Math.max(0, fiadosGerados - abatimentoCashout); // Fiados still unpaid
+  // Total de todas as quitações desta sessão (fichas + dinheiro real)
+  const totalQuitacoesSessao = sessionReceipts.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
+  const fiadoPendente = Math.max(0, fiadosGerados - totalQuitacoesSessao); // Fiados still unpaid
   const totalBonus = dailySummary.totalBonuses;
 
   // Format dates
@@ -242,6 +244,7 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
     }
 
     // ===== HEADER =====
+    y += 2; // spacing between logo and club name
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text(clubName, w / 2, y, { align: 'center' });
