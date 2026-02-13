@@ -309,10 +309,6 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
     addSectionTitle('2. FLUXO DE CAIXA (Financeiro)');
 
     addRow('Entradas Reais', formatCurrency(entradasReais));
-    if (recebimentoFiadosReal > 0) {
-      addSubRow('Buy-ins pagos:', formatCurrency(entradasReaisBuyIns));
-      addSubRow('Quitações (A Receber):', formatCurrency(recebimentoFiadosReal));
-    }
     addRow('Saídas Reais (Cash-outs)', `-${formatCurrency(saidasReais)}`);
     addRow('Pagamento Dealers', `-${formatCurrency(pagamentoDealers)}`);
 
@@ -563,18 +559,6 @@ export function CloseCashModal({ open, onClose, session }: CloseCashModalProps) 
                   <span>Entradas Reais</span>
                   <span className="money-value text-success">{formatCurrency(entradasReais)}</span>
                 </div>
-                {recebimentoFiadosReal > 0 && (
-                  <div className="ml-4 space-y-1">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Buy-ins pagos</span>
-                      <span>{formatCurrency(entradasReaisBuyIns)}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Quitações (A Receber)</span>
-                      <span>{formatCurrency(recebimentoFiadosReal)}</span>
-                    </div>
-                  </div>
-                )}
 
                 <div className="flex items-center justify-between text-sm">
                   <span>Saídas Reais (Cash-outs)</span>
